@@ -12,7 +12,13 @@ subst(and_elim2(P),variable(V),For,and_elim2(PSub)) :- subst(P,variable(V),For,P
 subst(disjunction(X,Y),variable(V),For,disjunction(XSub,YSub)) :- subst(X,variable(V),For,XSub), subst(Y,variable(V),For,YSub).
 subst(or_intro1(X),variable(V),For,or_intro1(XSub)) :- subst(X,variable(V),For,XSub).
 subst(or_intro2(Y),variable(V),For,or_intro2(YSub)) :- subst(Y,variable(V),For,YSub).
+subst(proposition,_,_,proposition).
+subst(empty,_,_,empty).
 subst(top,_,_,top).
+subst(top_intro1,_,_,top_intro1).
+subst(bool,_,_,bool).
+subst(bool_intro1,_,_,bool_intro1).
+subst(bool_intro2,_,_,bool_intro2).
 subst(implies(X,Y),variable(V),For,implies(XSub,YSub)) :- subst(X,variable(V),For,XSub), subst(Y,variable(V),For,YSub).
 subst(function(variable(V),Expr),variable(W),For,function(variable(Fresh),ExprSub)) :- 
 	gensym(v,Fresh),
