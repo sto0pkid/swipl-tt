@@ -27,21 +27,20 @@ proof(tree(bool_intro1,[]), tree(bool,[]),_).
 proof(tree(bool_intro2,[]), tree(bool,[]),_).
 
 
-
 % reification of `,`
 proof(tree(conjunction,[X,Y]),tree(proposition,[]),Assumptions) :- 
 	proof(X, tree(proposition,[]), Assumptions),
 	proof(Y, tree(proposition,[]), Assumptions).
 
-proof(tree(and_intro1,[XProof,YProof]),tree(conjunction,[X,Y]),Assumptions) :- 
+proof(tree(conjunction_intro1,[XProof,YProof]),tree(conjunction,[X,Y]),Assumptions) :- 
 	proof(tree(conjunction,[X,Y]),tree(proposition,[]),Assumptions),
 	proof(XProof,X,Assumptions),
 	proof(YProof,Y,Assumptions).
 
-proof(tree(and_elim1,[P]),X,Assumptions) :- 
+proof(tree(conjunction_elim1,[P]),X,Assumptions) :- 
 	proof(P,tree(conjunction, [X,_]),Assumptions).
 
-proof(tree(and_elim2,[P]),Y,Assumptions) :- 
+proof(tree(conjunction_elim2,[P]),Y,Assumptions) :- 
 	proof(P,tree(conjunction, [_,Y]),Assumptions).
 
 
@@ -51,30 +50,30 @@ proof(tree(disjunction,[X,Y]),tree(proposition,[]),Assumptions) :-
 	proof(X, tree(proposition,[]), Assumptions),
 	proof(Y, tree(proposition,[]), Assumptions).
 
-proof(tree(or_intro1,[XProof]),tree(disjunction,[X,Y]),Assumptions) :- 
+proof(tree(disjunction_intro1,[XProof]),tree(disjunction,[X,Y]),Assumptions) :- 
 	proof(tree(disjunction,[X,Y]),tree(proposition,[]),Assumptions),
 	proof(XProof,X,Assumptions).
 
-proof(tree(or_intro2,[YProof]),tree(disjunction,[X,Y]),Assumptions) :- 
+proof(tree(disjunction_intro2,[YProof]),tree(disjunction,[X,Y]),Assumptions) :- 
 	proof(tree(disjunction,[X,Y]),tree(proposition,[]),Assumptions),
 	proof(YProof,Y,Assumptions).
 
-%proof(tree(or_elim1, [P,variable(V),Left,Right]),C,Assumptions) :- 
-%	proof(P,tree(disjunction,[X,Y]),Assumptions),
-%	proof(Left,C,[assumption(variable(V),X)|Assumptions]),
-%	proof(Right,C,[assumption(variable(V),Y)|Assumptions]).
+proof(tree(disjunction_elim1, [P,binding(variable(V),Left),binding(variable(W),Right)]),C,Assumptions) :-
+	proof(P,tree(disjunction,[X,Y]),Assumptions),
+	proof(Left,C,[assumption(variable(V),X)|Assumptions]),
+	proof(Right,C,[assumption(variable(W),Y)|Assumptions]).
 
 
 
 % reification of `:-`
-proof(tree(implies,[X,Y]),tree(proposition,[]),Assumptions) :-
+proof(tree(implication,[X,Y]),tree(proposition,[]),Assumptions) :-
 	proof(X, tree(proposition,[]), Assumptions),
 	proof(Y, tree(proposition,[]), Assumptions).
 
-proof(tree(function,[binding(variable(V),Expr)]),tree(implies,[X,Y]), Assumptions) :- 
-	proof(tree(implies,[X,Y]),tree(proposition,[]),Assumptions),
+proof(tree(implication_intro1,[binding(variable(V),Expr)]),tree(implication,[X,Y]), Assumptions) :- 
+	proof(tree(implication,[X,Y]),tree(proposition,[]),Assumptions),
 	proof(Expr,Y,[assumption(variable(V),X)|Assumptions]).
 
-proof(tree(apply,[F,X]),B,Assumptions) :- 
+proof(tree(implication_elim1,[F,X]),B,Assumptions) :- 
 	proof(X,A,Assumptions),
-	proof(F,tree(implies,[A,B]),Assumptions).
+	proof(F,tree(implication,[A,B]),Assumptions).
