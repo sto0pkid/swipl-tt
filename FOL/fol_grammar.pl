@@ -1,7 +1,7 @@
 :- module(
 	fol_grammar,
 	[
-		proposition/1,
+		formula/1,
 		term/1,
 		variable/1,
 		predicate/1,
@@ -10,13 +10,13 @@
 ).
 
 
-proposition(forall(Var, Prop)) :- variable(Var), proposition(Prop).
-proposition(exists(Var, Prop)) :- variable(Var), proposition(Prop).
-proposition(and(Prop1, Prop2)) :- proposition(Prop1), proposition(Prop2).
-proposition(or(Prop1, Prop2)) :- proposition(Prop1), proposition(Prop2).
-proposition(implies(Prop1, Prop2)) :- proposition(Prop1), proposition(Prop2).
-proposition(not(Prop)) :- proposition(Prop).
-proposition(Prop) :- predicate(Prop).
+formula(forall(Var, Prop)) :- variable(Var), formula(Prop).
+formula(exists(Var, Prop)) :- variable(Var), formula(Prop).
+formula(and(Prop1, Prop2)) :- formula(Prop1), formula(Prop2).
+formula(or(Prop1, Prop2)) :- formula(Prop1), formula(Prop2).
+formula(implies(Prop1, Prop2)) :- formula(Prop1), formula(Prop2).
+formula(not(Prop)) :- formula(Prop).
+formula(Prop) :- predicate(Prop).
 
 variable('?'(_)).
 
