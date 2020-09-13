@@ -1,5 +1,13 @@
 :- module(swipl_stt_tree,[proof/3]).
 
+/*
+*
+* Introducing variable binding. This sucks! Get rid of the "tree" thing but
+* keep the variable binding.
+*
+*/
+
+
 % hypothesis
 proof(variable(V), X,[assumption(variable(V),X)|_]).
 
