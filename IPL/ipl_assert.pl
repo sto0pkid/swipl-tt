@@ -1,4 +1,4 @@
-:- dynamic a/2, f/0, t/0, implies/2.
+:- dynamic a/2, f/0, t/0, and/2, or/2, implies/2.
 
 f :- false.
 t :- true.
