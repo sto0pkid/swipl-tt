@@ -14,6 +14,12 @@
 * How about termination of proof-search? This should be logically equivalent
 * to IPL so we should hypothetically be able to have complete proof search.
 */
+
+/*
+* Should beta reduction be a judgement?
+*
+*
+*/
 substitute(x(X), x(X), For,  For) :- !.
 substitute(x(X), x(Y),   _, x(X)) :- !, X \= Y.
 
@@ -154,16 +160,23 @@ judgement(apply(F,X):B,  G) :-
 
 
 beta_reduction(apply(lambda(bind(x(V), Expr)), X), FX) :-
-	!,
 	substitute(Expr, x(V), X, FX).
 
-beta_reduction(apply(apply(F, SubArg), Arg), FArg) :-
-	beta_reduction(apply(F, SubArg), FSubArg),
+
+
+% congruence rule:
+beta_reduction(T, T_Out) :-
+	T =.. [F | Args],
+	maplist(beta_reduction, Args, Args_Reduced),
+	T_Reduced =.. [F | Args_Reduced],
 	(
-		FSubArg = lambda(_)
-	->	beta_reduction(apply(FSubArg, Arg), FArg)
-	;	FArg = apply(FSubArg, Arg)
+		Args \= Args_Reduced
+	->	beta_reduction(T_Reduced,T_Out)
+	;	T_Out = T_Reduced
 	).
+
+
+
 
 example(X) :-
 	beta_reduction(
