@@ -1,58 +1,59 @@
-:- module(swipl_stt,[judgement/2, substitute/4, beta_reduction/2]).
+:- module(swipl_stt,[substitute/4, '#'/2]).
 :- use_module(library(gensym)).
+:- op(999, xfx, #).
 
 
 % CAPTURE-AVOIDING SUBSTITUTION
-substitute(x(X), x(X), For,  For) :- !.
-substitute(x(X), x(Y),   _, x(X)) :- !, X \= Y.
-
-substitute([],_,_,[]) :- !.
-substitute([X | Rest], x(V), For, [SubX | SubRest]) :-
+substitute(X, Y, For,  X_Sub) :-
+	var(X),
 	!,
-	substitute(X, x(V), For, SubX),
-	substitute(Rest, x(V), For, SubRest).
-
-substitute(bind(x(X),Expr),x(Y), For, bind(x(Fresh),ExprSub)) :-
+	(
+		X == Y
+	->	X_Sub = For
+	;	X_Sub = X
+	).
+	
+substitute([], _, _, []) :- !.
+substitute([Term | Rest], X, For, [Term_Sub | Rest_Sub]) :-
 	!,
-	gensym(x,Fresh),
-	substitute(Expr, x(X), x(Fresh), ExprFresh),
-	substitute(ExprFresh, x(Y), For, ExprSub).
+	substitute(Term, X, For, Term_Sub),
+	substitute(Rest, X, For, Rest_Sub).
+	
+substitute(bind(X,Expr), Y, For, bind(Fresh,Expr_Sub)) :-
+	!,
+	substitute(Expr, X, Fresh, Expr_Fresh),
+	substitute(Expr_Fresh, Y, For, Expr_Sub).
 
-substitute(Term, x(X), For, TermSub) :-
+substitute(Term, X, For, Term_Sub) :-
 	Term =.. [F | Args],
-	substitute(Args, x(X), For, ArgsSub),
-	TermSub =.. [F | ArgsSub].
-
-
+	substitute(Args, X, For, Args_Sub),
+	Term_Sub =.. [F | Args_Sub].
 
 
 % HYPOTHESIS RULE
-judgement(x(V):X, [x(V):X|_]).
-judgement(x(V):X, [x(W):_|G]) :- V \= W, judgement(x(V):X,G).
-
-
-
+[X:T|_] # X:T.
+[X:_|G] # Y:T :-	X \= Y, G # Y:T.
 
 
 
 % EMPTY / FALSE type  ; nullary sum
 % formation
-judgement(type(empty),_).
+_ # type(empty).
 
 % introduction
 % -- no introduction rules!
 
 % elimination
-judgement(explosion(F):C, G) :-
-	judgement(F:empty, G),
-	judgement(type(C), G).
+G # explosion(F):C :- 
+	G # F:empty,
+	G # type(C).
 
 % beta?
 % -- no beta rules because no introduction rules
 
 % eta?
-judgement(F = explosion(F), G) :-
-	judgement(F:empty, G).
+G # F = explosion(F) :-
+	G # F:empty.
 
 
 /*
@@ -60,7 +61,7 @@ judgement(F = explosion(F), G) :-
 * They use "abort_C" instead of "explosion" on ncatlab: https://ncatlab.org/nlab/show/empty+type
 *  but, why should the label for the eliminator vary depending on the type that it's eliminating into?
 *  We don't do this for any of the other types ex.. `unit_elim`, `if_then_else`, `case`, `apply`, ...
-*
+* 
 * It seems to be implying that we need a different abort_C for every type C to make sure that the object
 * abort_C(F) / explosion_C(F) actually has type C, and since there are different types we can't have the
 * same abort_C on the same object F for every C... but... if we have a proof of False then the system is
@@ -85,23 +86,23 @@ judgement(F = explosion(F), G) :-
 
 % UNIT / TRUE / TOP / 1-member type ; nullary product)
 % formation
-judgement(type(unit),_).
+_ # type(unit).
 
 % introduction
-judgement(null:unit,_).
+_ # null:unit.
 
 % elimination
-judgement(unit_elim(U, X):C, G) :-
-	judgement(U:unit, G),
-	judgement(type(C), G),
-	judgement(X:C, G).
+G # unit_elim(U, X):C :-
+	G # U:unit,
+	G # type(C),
+	G # X:C.
 
 % beta
-judgement(unit_elim(null, X) = X, _).
+_ # unit_elim(null, X) = X.
 
 % eta
-judgement(U = unit_elim(U,null), G) :-
-	judgement(U:unit, G).
+G # U = unit_elim(U,null) :-
+	G # U:unit.
 
 
 
@@ -111,26 +112,26 @@ judgement(U = unit_elim(U,null), G) :-
 
 % BOOL / 2-member type
 % formation
-judgement(type(bool),_).
+_ # type(bool).
 
 % introduction
-judgement(true:bool,_).
-judgement(false:bool,_).
+_ # true:bool.
+_ # false:bool.
 
 % elimination
-judgement(if_then_else(B, X, Y):C, G) :-
-	judgement(B:bool, G),
-	judgement(type(C), G),
-	judgement(X:C, G),
-	judgement(Y:C, G).
+G # if_then_else(B, X, Y):C :-
+	G # B:bool,
+	G # type(C),
+	G # X:C,
+	G # Y:C.
 
 % beta
-judgement(if_then_else(true, X, _) = X, _).
-judgement(if_then_else(false, _, Y) = Y, _).
+_ # if_then_else(true, X, _) = X.
+_ # if_then_else(false, _, Y) = Y.
 
 % eta
-judgement(B = if_then_else(B, true, false), G) :-
-	judgement(B:bool, G).
+G # B = if_then_else(B, true, false) :-
+	G # B:bool.
 
 /*
 * Notes:
@@ -143,7 +144,7 @@ judgement(B = if_then_else(B, true, false), G) :-
 
 
 
-
+/*
 % PAIR / PRODUCT / CONJUNCTION / "AND" type
 % formation
 judgement(type(pair(A,B)), G) :- 
@@ -171,12 +172,14 @@ judgement(second((_,Y)) = Y, _).
 % eta
 judgement(P = (first(P), second(P)), G) :-
 	judgement(P:pair(_,_), G).
+*/
 
 
 
 
 
 
+/*
 % DISJOINT UNION / DISJUNCTION / "OR" TYPE
 
 % formation
@@ -210,11 +213,13 @@ judgement(case(right(Y), _, bind(x(V),R)) = RSub, _) :-
 % eta
 judgement(C = case(C, bind(x(V),left(x(V))), bind(x(W),right(x(W)))), G) :-
 	judgement(C:union(_,_), G).
+*/
 
 
 
 
 
+/*
 % IMPLICATION / FUNCTION TYPE
 % formation
 judgement(type(function(A, B)), G) :- 
@@ -240,12 +245,12 @@ judgement(apply(lambda(bind(x(V), Expr)), X) = FX, _) :-
 judgement(F = lambda(bind(x(V),apply(F,x(V)))), G) :-
 	judgement(F:function(_,_),G).
 
+*/
 
 
 
 
-
-
+/*
 % NATURAL NUMBERS
 % formation
 judgement(type(nat), _).
@@ -263,19 +268,19 @@ judgement(nat_rec(N,Z,bind(x(V),S)):C, G) :-
 	judgement(S:C, [x(V):nat|G]).
 
 % beta
-judgement(nat_rec(0, Z, _) = Z, _).
-judgement(nat_rec(suc(N), _, bind(x(V),S)) = S_Sub, _) :-
+judgement(nat_rec(0, Z, S) = Z, _).
+judgement(nat_rec(suc(N), Z, bind(x(V),S)) = S_Sub, _) :-
 	substitute(S, x(V), N, S_Sub).
 
 % eta
 judgement(N = nat_rec(N, 0, bind(x(V),suc(x(V)))), G) :-
 	judgement(N:nat, G).
 
+*/
 
 
 
-
-
+/*
 % LIST TYPE
 % formation
 judgement(type(list(A)), G) :-
@@ -294,7 +299,7 @@ judgement(list_rec(L, Last, bind(x(V),bind(x(W),F))):C, G) :-
 	judgement(type(C), G),
 	judgement(L:list(_), G),
 	judgement(Last:C, G),
-	judgement(F:C, [x(V):A,x(W):list(A)|G]).
+	judgement(F:C, [x(V):list(A)|G]).
 
 
 % beta
@@ -306,6 +311,7 @@ judgement(list_rec([X|Xs], _, bind(x(V),bind(x(W),Cons))) = Cons_Sub, _) :-
 judgement(L = list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))), G) :-
 	judgement(L:list(_), G).
 
+*/
 
 /*
 * Notes:
@@ -317,7 +323,7 @@ judgement(L = list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))), G) :-
 
 
 
-
+/*
 % CONGRUENCE RULE
 judgement(T1 = T2, G) :-
 	T =.. [F | Args],
@@ -328,21 +334,21 @@ judgement(T1 = T2, G) :-
 	->	judgement(T_Reduced = T_Out, G)
 	;	T_Out = T_Reduced
 	).
-
+*/
 
 
 
 
 
 example(X) :-
-	judgement(
+	beta_reduction(
 		apply(
 			apply(
 				lambda(bind(x(1), lambda(bind(x(2), x(1))))),
 				"hi"
 			),
 			"bye"
-		) = X,
-		[]
+		),
+		X
 	).
 

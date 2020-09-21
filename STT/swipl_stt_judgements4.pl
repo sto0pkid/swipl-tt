@@ -1,5 +1,9 @@
-:- module(swipl_stt,[judgement/2, substitute/4, beta_reduction/2]).
+:- module(swipl_stt,[judgement/2, substitute/4, example/1]).
 :- use_module(library(gensym)).
+
+:- discontiguous judgement/2.
+:- op(999, xfx, user:'~>').	% one step normalization
+:- op(999, xfx, user:'~>>').	% full normalization
 
 
 % CAPTURE-AVOIDING SUBSTITUTION
@@ -33,8 +37,6 @@ judgement(x(V):X, [x(W):_|G]) :- V \= W, judgement(x(V):X,G).
 
 
 
-
-
 % EMPTY / FALSE type  ; nullary sum
 % formation
 judgement(type(empty),_).
@@ -51,7 +53,7 @@ judgement(explosion(F):C, G) :-
 % -- no beta rules because no introduction rules
 
 % eta?
-judgement(F = explosion(F), G) :-
+judgement(explosion(F) ~> F, G) :-
 	judgement(F:empty, G).
 
 
@@ -97,11 +99,12 @@ judgement(unit_elim(U, X):C, G) :-
 	judgement(X:C, G).
 
 % beta
-judgement(unit_elim(null, X) = X, _).
+judgement(unit_elim(null, X) ~> X, _).
 
 % eta
-judgement(U = unit_elim(U,null), G) :-
+judgement(unit_elim(U,null) ~> U, G) :-
 	judgement(U:unit, G).
+
 
 
 
@@ -125,11 +128,11 @@ judgement(if_then_else(B, X, Y):C, G) :-
 	judgement(Y:C, G).
 
 % beta
-judgement(if_then_else(true, X, _) = X, _).
-judgement(if_then_else(false, _, Y) = Y, _).
+judgement(if_then_else(true, X, _) ~> X, _).
+judgement(if_then_else(false, _, Y) ~> Y, _).
 
 % eta
-judgement(B = if_then_else(B, true, false), G) :-
+judgement(if_then_else(B, true, false) ~> B, G) :-
 	judgement(B:bool, G).
 
 /*
@@ -165,11 +168,11 @@ judgement(second(P):B, G) :-
 	judgement(P:pair(_,B), G).
 
 % beta
-judgement(first((X,_)) = X, _).
-judgement(second((_,Y)) = Y, _).
+judgement(first((X,_)) ~> X, _).
+judgement(second((_,Y)) ~> Y, _).
 
 % eta
-judgement(P = (first(P), second(P)), G) :-
+judgement((first(P), second(P)) ~> P, G) :-
 	judgement(P:pair(_,_), G).
 
 
@@ -201,14 +204,14 @@ judgement(case(P, bind(x(V),L), bind(x(W),R)):C, G) :-
 	judgement(R:C, [x(W):B | G]).
 
 % beta
-judgement(case(left(X), bind(x(V),L), _) = LSub, _) :-
+judgement(case(left(X), bind(x(V),L), _) ~> LSub, _) :-
 	substitute(L, x(V), X, LSub).
-judgement(case(right(Y), _, bind(x(V),R)) = RSub, _) :-
+judgement(case(right(Y), _, bind(x(V),R)) ~> RSub, _) :-
 	substitute(R, x(V), Y, RSub).
 
 
 % eta
-judgement(C = case(C, bind(x(V),left(x(V))), bind(x(W),right(x(W)))), G) :-
+judgement(case(C, bind(x(V),left(x(V))), bind(x(W),right(x(W)))) ~> C, G) :-
 	judgement(C:union(_,_), G).
 
 
@@ -233,11 +236,11 @@ judgement(apply(F,X):B,  G) :-
 
 
 % beta
-judgement(apply(lambda(bind(x(V), Expr)), X) = FX, _) :-
+judgement(apply(lambda(bind(x(V), Expr)), X) ~> FX, _) :-
 	substitute(Expr, x(V), X, FX).
 
 % eta
-judgement(F = lambda(bind(x(V),apply(F,x(V)))), G) :-
+judgement(lambda(bind(x(V),apply(F,x(V)))) ~> F, G) :-
 	judgement(F:function(_,_),G).
 
 
@@ -263,12 +266,12 @@ judgement(nat_rec(N,Z,bind(x(V),S)):C, G) :-
 	judgement(S:C, [x(V):nat|G]).
 
 % beta
-judgement(nat_rec(0, Z, _) = Z, _).
-judgement(nat_rec(suc(N), _, bind(x(V),S)) = S_Sub, _) :-
+judgement(nat_rec(0, Z, _) ~> Z, _).
+judgement(nat_rec(suc(N), _, bind(x(V),S)) ~> S_Sub, _) :-
 	substitute(S, x(V), N, S_Sub).
 
 % eta
-judgement(N = nat_rec(N, 0, bind(x(V),suc(x(V)))), G) :-
+judgement(nat_rec(N, 0, bind(x(V),suc(x(V)))) ~> N, G) :-
 	judgement(N:nat, G).
 
 
@@ -298,13 +301,14 @@ judgement(list_rec(L, Last, bind(x(V),bind(x(W),F))):C, G) :-
 
 
 % beta
-judgement(list_rec([], Nil, _) = Nil, _).
-judgement(list_rec([X|Xs], _, bind(x(V),bind(x(W),Cons))) = Cons_Sub, _) :-
+judgement(list_rec([], Nil, _) ~> Nil, _).
+judgement(list_rec([X|Xs], _, bind(x(V),bind(x(W),Cons))) ~> Cons_Sub, _) :-
 	substitute(Cons, x(V), X, Cons_Sub1),
 	substitute(Cons_Sub1, x(W), Xs, Cons_Sub).
 % eta
-judgement(L = list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))), G) :-
+judgement(list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))) ~> L, G) :-
 	judgement(L:list(_), G).
+
 
 
 /*
@@ -319,18 +323,36 @@ judgement(L = list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))), G) :-
 
 
 % CONGRUENCE RULE
-judgement(T1 = T2, G) :-
-	T =.. [F | Args],
-	maplist([X,Y]>>judgement(X = Y, G), Args, Args_Reduced),
-	T_Reduced =.. [F | Args_Reduced],
-	(
-		Args \= Args_Reduced
-	->	judgement(T_Reduced = T_Out, G)
-	;	T_Out = T_Reduced
-	).
+judgement(T1 ~> T2, G) :-
+	T1 =.. [F | Args_1],
+	cong(Args_1, Args_2, G),
+	T2 =.. [F | Args_2].
+
+cong([Arg_1 | Args], [Arg_2 | Args], G) :-
+	judgement(Arg_1 ~> Arg_2, G).
+cong([Arg | Args_1], [Arg | Args_2], G) :-
+	\+judgement(Arg ~> _, G),
+	cong(Args_1, Args_2, G).
 
 
+% NORMALIZATION
+judgement(T1 ~>> NF, G) :-
+	judgement(T1 ~> T2, G),
+	judgement(T2 ~>> NF, G).
 
+judgement(NF ~>> NF, G) :-
+	\+judgement(NF ~> _, G).
+
+
+/*
+* Notes:
+* The rules extend the one-step beta/eta rules to give an actual evaluation/reduction strategy.
+* Different formulations of these rules will give variations on the evaluation strategy, ex.. we
+* can get call-by-value, call-by-name, etc...
+*
+* I haven't thought deeply on this yet.
+*
+*/
 
 
 
@@ -342,7 +364,7 @@ example(X) :-
 				"hi"
 			),
 			"bye"
-		) = X,
+		) ~>> X,
 		[]
 	).
 
