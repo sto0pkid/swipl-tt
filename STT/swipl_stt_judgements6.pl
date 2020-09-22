@@ -6,6 +6,13 @@
 :- op(999, xfx, user:'~>>').	% full normalization
 
 
+list_to_tuple([], true).
+list_to_tuple([X | Xs], (X, Xs_Tuple)) :-
+	list_to_tuple(Xs, Xs_Tuple).
+
+
+
+
 % CAPTURE-AVOIDING SUBSTITUTION
 substitute(x(X), x(X), For,  For) :- !.
 substitute(x(X), x(Y),   _, x(X)) :- !, X \= Y.
@@ -144,11 +151,6 @@ _{
 }
 */
 
-list_to_tuple([], true).
-list_to_tuple([X | Xs], (X, Xs_Tuple)) :-
-	list_to_tuple(Xs, Xs_Tuple).
-
-
 
 
 % FORMATION RULES: definitional
@@ -275,9 +277,9 @@ get_elimination_rules(Decl, Elimination) :-
 % judgement(
 % 	<name>_elim(
 %		intro1(Arg11, ..., Arg1(N_1)),
-%		bind([x(X11), ..., x(X1(N_1))], Case1),
+%		bind(Vars1, Case1),
 %		...,
-%		bind([x(XM1), ..., x(XM(N_M))], CaseM)
+%		bind(VarsM, CaseM)
 %	) ~> Case1_Sub,
 %	_
 % ) :-
@@ -288,17 +290,39 @@ get_elimination_rules(Decl, Elimination) :-
 % judgement(
 %	<name>_elim(
 %		introM(ArgM1, ..., ArgM(N_M)),
-%		bind([x(X11), ..., x(X1(N_1))], Case1),
+%		bind(Vars1, Case1),
 %		...,
-%		bind([x(XM1), ..., x(XM(N_M))], CaseM)
+%		bind(VarsM, CaseM)
 %	) ~> CaseM_Sub,
 %	_
 % ) :-
 %	substitute(CaseM, VarsM, ArgsM, CaseM_Sub).
 
 
-get_beta_rules(_Decl, Beta) :- 
-	Beta = [].
+get_beta_rules(Decl, Beta) :- 
+	maplist(
+		[Intro, Case_Arg]>>(
+			Case_Arg = bind(_, _)
+		),
+		Decl.intros,
+		Case_Args
+	),
+
+	maplist(
+		[Intro, Case_Arg, Rule]>>(
+			get_beta_rule(Decl, Intro, Case_Arg, Rule, Case_Args)
+		),
+		Decl.intros,
+		Case_Args,
+		Beta
+	).
+
+get_beta_rule(Decl, IntroName:IntroArgTypes, bind(Vars, Case), Rule, Case_Args) :-
+	maplist({ArgVar}/[_, ArgVar]>>(ArgVar = _), IntroArgTypes, IntroArgs),
+	Obj =.. [IntroName | IntroArgs],
+	Elim =.. [elim, Decl.name, Obj | Case_Args],
+	Rule = (judgement(Elim ~> Case_Sub) :- substitute(Case, Vars, IntroArgs, Case_Sub)).
+
 
 
 
@@ -313,14 +337,26 @@ get_beta_rules(_Decl, Beta) :-
 %		...,
 %		bind([x(XM1), ..., x(XM(N_M))], introM(x(XM1), ..., x(XM(N_M))))
 %	) ~> Obj,
-%	G
+%	Context
 % ) :-
-%	judgement(Obj:<name>, G).
+%	judgement(Obj:<name>(_,...,_), Context).
 
 
-get_eta_rules(_Decl, Eta) :- 
-	Eta = [].
-
+get_eta_rules(Decl, Eta) :- 
+	maplist(
+		[Intro, Case]>>(
+			Intro = IntroName:ArgTypes,
+			maplist({ArgVarInner}/[_, ArgVar]>>(ArgVar = x(ArgVarInner)), ArgTypes, IntroArgs),
+			IntroObj =.. [IntroName | IntroArgs],
+			Case = bind(IntroArgs, IntroObj)
+		),
+		Decl.intros,
+		Cases
+	),
+	Elim =.. [elim, Obj | Cases],
+	Type =.. [Decl.name | Decl.params],
+	Rule = (judgement(Elim ~> Obj, Context) :- judgement(Obj:Type, Context)),
+	Eta = [Rule].
 
 
 
