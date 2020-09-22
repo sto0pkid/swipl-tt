@@ -12,15 +12,36 @@ This project is meant to be an interactive tutorial on type theory, starting fro
 
 It lets you eliminate impossible cases. Take for example the proposition:
 
-`forall x:Nat, (x > 1) -> (x \= x^2)`
+	forall x:Nat, (x > 1) -> (x \= x^2)
 
 You can prove propositions `forall x:Nat, P(x)` by case matching on `x:Nat`, i.e.:
-`
-proof : forall x:Nat, (x > 1) -> (x \= x^2)
-proof 0 x_gt_1 = x_neq_x2
-proof (S n) x_gt_1 = x_neq_x2
-`
 
-Only problem is that there's no way to fill in the RHS `x_neq_x2` for the 0 case, because in fact `0 = 0^2`. But `x=0` violates our other assumption that `x > 1`, i.e. `0 > 1` is false. So we can derive a contradiction a proof `f:False` from the assumption `0 > 1` and satisfy the RHS with `explosion(f)`.
+	proof : forall x:Nat, (x > 1) -> (x \= x^2)
+	proof     0 x_gt_1 = x_neq_x2
+	proof (S n) x_gt_1 = x_neq_x2
 
-Since there's no way to actually satisfy `0 > 1`, you can never actually call `proof` on that case (except under a hypothetical)
+Only problem is that there's no way to fill in the RHS `x_neq_x2` for the 0 case, because in fact `0 = 0^2`. But `x=0` violates our other assumption that `x > 1`, i.e. `0 > 1` is false. So we can derive a contradiction, a proof `f:False` from the assumption `0 > 1` and satisfy the RHS with `explosion(f)`.
+
+Since there's no way to actually satisfy `0 > 1`, you can never actually call `proof` on that case (except under a hypothetical), so you never run into a situation where you run a function and get `explosion(f)` as the output. The case is impossible, and all we've done is proved it in order to eliminate the case from consideration in our proof.
+
+In some cases you can describe exactly the domain you want to your proof to cover so that there are no impossible cases to eliminate and therefore no need to use principle of explosion. For example:
+
+	data NatsGreaterThan1 : Set
+		2 : NatsGreaterThan1
+		suc : NatsGreaterThan1 -> NatsGreaterThan1
+	
+	interpret : NatsGreaterThan1 -> Nat
+	interpret 2 = suc(suc(0))
+	interpret (suc(N)) = suc(interpret(N))
+
+	proof : forall x:NatsGreaterThan1, interpret(x) \= interpret(x)^2
+	proof	  2 = x_neq_x2
+	proof (S n) = x_neq_x2
+
+I don't know if there are limitations to this trick or if it's always at least theoretically possible but it's often the case that subsets are referenced in the former way, i.e. by quantifying over the base type (i.e. `Nat`) and using a proposition (i.e. `x > 1`) to specify the members of the subset, and this is the situation where principle of explosion is useful.
+
+On a theoretical level, the principle is "just kinda there".
+
+On a proof-theoretic level, the principle of explosion simply arises from the general principle for defining positive types from their introduction rules. If you look at the introduction rules for the empty type (there are none) and then define the (positive) elimination rule for it based on those rules, it's the principle of explosion. The general principle for defining positive types is what gives us rules for, ex.. enum/union types of any number of elements. If we take the enum/union type of 0 elements, it's the empty type and the elimination rule for it is the principle of explosion in the same pattern as how the elimination rule is defined for for any other number of elements.
+
+On a set-theoretic level, the principle of explosion is a consequence of the fact that the empty set is a subset of every set, so any inhabitant of the empty set must be an inhabitant of every set, which corresponds to any proof of the False type being a proof of every proposition (under the interpretation of propositions as the sets of their proofs).
