@@ -6,6 +6,8 @@
 :- op(999, xfx, user:'~>>').	% full normalization
 
 
+
+
 % CAPTURE-AVOIDING SUBSTITUTION
 substitute(x(X), x(X), For,  For) :- !.
 substitute(x(X), x(Y),   _, x(X)) :- !, X \= Y.
@@ -28,6 +30,10 @@ substitute(Term, x(X), For, TermSub) :-
 	TermSub =.. [F | ArgsSub].
 
 
+
+
+
+
 % ALPHA EQUALITY
 % terms are alpha-equal if they're identical up to variable renaming
 % in De Bruijn index notation, alpha-equal terms are syntactically identical
@@ -42,9 +48,16 @@ alpha_eq(T1, T2) :-
 	F1 = F2,
 	maplist(alpha_eq, Args1, Args2).
 
+
+
+
+
+
 % HYPOTHESIS RULE
 judgement(x(V):X, [x(V):X|_]).
 judgement(x(V):X, [x(W):_|G]) :- V \= W, judgement(x(V):X,G).
+
+
 
 
 
@@ -241,6 +254,7 @@ judgement(case(C, bind(x(V),left(x(V))), bind(x(W),right(x(W)))) ~> C, G) :-
 
 
 
+
 % IMPLICATION / FUNCTION TYPE
 % formation
 judgement(function(A, B):type, G) :- 
@@ -265,6 +279,10 @@ judgement(apply(lambda(bind(x(V), Expr)), X) ~> FX, _) :-
 % eta
 judgement(lambda(bind(x(V),apply(F,x(V)))) ~> F, G) :-
 	judgement(F:function(_,_),G).
+
+
+
+
 
 
 % FORALL / PI / DEPENDENT PRODUCT / DEPENDENT FUNCTION type
@@ -295,6 +313,9 @@ judgement(lambda(bind(x(V),apply(F,x(V)))) ~> F, G) :-
 
 
 
+
+
+
 % EXISTS / SIGMA / DEPENDENT SUM / DEPENDENT PAIR type
 % formation
 judgement(exists(A,bind(x(V),B)):type, G) :-
@@ -321,6 +342,9 @@ judgement(proj2((_, Y)) ~> Y, _).
 % eta
 judgement((proj1(P), proj2(P)) ~> P, G) :-
 	judgement(P:exists(_,_), G).
+
+
+
 
 
 
@@ -446,7 +470,7 @@ judgement(T1 = T2, G) :-
 *
 */
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 example(X) :-
 	judgement(
