@@ -2,14 +2,11 @@
 
 This project is meant to be an interactive tutorial on type theory, starting from the very basics. SWI-Prolog is used as an approximation of the natural deduction / sequent-calculus style systems that are typically used to formulate systems of type theory.
 
-### Run the examples:
-`> swipl -s STT/swipl_stt_tree_examples.pl`
-
-`?- run.`
 
 ## FAQ
 ### Why do you need to encode the principle of explosion?
 
+#### On a practical level
 It lets you eliminate impossible cases. Take for example the proposition:
 
 	forall x:Nat, (x > 1) -> (x \= x^2)
@@ -38,9 +35,11 @@ In some cases you can describe exactly the domain you want to your proof to cove
 	proof	  2 = x_neq_x2
 	proof (S n) = x_neq_x2
 
-I don't know if there are limitations to this trick or if it's always at least theoretically possible but it's often the case that subsets are referenced in the former way, i.e. by quantifying over the base type (i.e. `Nat`) and using a proposition (i.e. `x > 1`) to specify the members of the subset, and this is the situation where principle of explosion is useful.
+I don't know if there are limitations to this trick or if it's always at least theoretically possible but it's often the case that subsets are referenced in the former way, i.e. by quantifying over the base type (i.e. `Nat`) and using a proposition (i.e. `x > 1`) to specify the members of the subset, and this is the situation where principle of explosion is useful. An example where it might be harder to use this trick would be when the base type is `TuringMachine` and the proposition used to specify members of the subset is `halts(x)`.
 
-On a theoretical level, the principle is "just kinda there".
+#### On a theoretical level
+
+The principle is "just kinda there", at least in this general framework of logic.
 
 On a proof-theoretic level, the principle of explosion simply arises from the general principle for defining positive types from their introduction rules. If you look at the introduction rules for the empty type (there are none) and then define the (positive) elimination rule for it based on those rules, it's the principle of explosion. The general principle for defining positive types is what gives us rules for, ex.. enum/union types of any number of elements. If we take the enum/union type of 0 elements, it's the empty type and the elimination rule for it is the principle of explosion in the same pattern as how the elimination rule is defined for for any other number of elements.
 
