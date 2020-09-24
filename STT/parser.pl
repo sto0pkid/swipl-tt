@@ -1,3 +1,5 @@
+:- module(parser, []).
+
 :- use_module(library(dcg/basics)).
 :- use_module(library(dcg/high_order)).
 /*
@@ -32,7 +34,7 @@ id([First | Rest]) --> alpha(First), id_syms(Rest).
 
 id --> alpha, id_syms.
 
-term(Name, Args) --> 
+compound2(Name, Args) --> 
 	id(Name_Codes),
 	sequence(
 		("(", whites),
@@ -45,6 +47,9 @@ term(Name, Args) -->
 		atom_codes(Name, Name_Codes),
 		maplist(atom_codes, Args, Args_Codes)
 	}.
+term(Name, []) --> id(Name_Codes), {atom_codes(Name, Name_Codes)}.
+term(Name, Args) --> compound2(Name, Args).
+
 arg_types(Arg_Types) --> 
 	sequence(
 		id,
@@ -64,6 +69,16 @@ intros([Intro | Intros]) --> intro(Intro),  intros(Intros).
 
 decl(_{name:Name,params:Params,intros:Intros}) --> form(Name, Params), "\n", intros(Intros).
 
+decls([]) --> [].
+decls([Decl | Decls]) --> decl(Decl), blanks, decls(Decls).
+
+well_formed(WFF) --> decls(WFF).
+
+
 example(Decl) :-
 	string_codes("data n_ame(arg1, arg2,arg3) :\n\tintro1:nat  ->nat -> bool\n\tintro2:nat -> nat", Codes),
+	phrase(decl(Decl), Codes).
+
+example2(Decl) :-
+	string_codes("data nat:\n\tz:nat\n\tsuc:nat -> nat", Codes),
 	phrase(decl(Decl), Codes).

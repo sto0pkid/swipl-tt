@@ -1,0 +1,7 @@
+data bool:
+	true :
+	false :
+
+data nat:
+	z :
+	suc : nat
