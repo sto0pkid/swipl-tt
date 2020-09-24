@@ -51,12 +51,14 @@ judgement(Term1:Type, [Term2:_|G]) :- \alpha_eq(Term1, Term2), judgement(Term1:T
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /* TODO:
-*  1) recursion
+*  1) recursion: goes in beta rules
 *  2) "bind([],Expr)" ~> Expr
 *  3) variable names
-*  4) eliminate axiomatic premises, ex.. 
-*  	"judgement(bool:type,_14550)" in "judgement(true:bool,_14550):-judgement(bool:type,_14550),true"
-*
+*  	* singletons --> _
+*  5) better intermediate representations
+*  	* ex.. preparation stage
+*  	* ex.. "no syntax sugar" stage
+*  	* ex.. separate stage for eliminating bindings
 *
 */
 
@@ -350,23 +352,26 @@ gen_elimination_rules(Decl, Elimination) :-
 			% ...		...		...			
 			% ArgT_1(N_1)	x(X_1(N_1))	[x(X_1(N_1)):ArgT_1(N_1) | * ]
 			maplist(
-				[Arg_Type,Arg_Var, Arg_Assumptions, Rec]>>(
+				{C}/[Arg_Type,Arg_Var, Assumption, Rec]>>(
 					Arg_Var = x(_),
 					Assumption = Arg_Var:Arg_Type,
 					(
 						Arg_Type == Type
-					->	Arg_Assumptions = Assumption
-					;	Arg_Assumptions = [Assumption, x(_):C]
+					->	Rec = x(_):C
+					;	false
 					)
 				),
-				Arg_Types, Arg_Vars, Assumptions
+				Arg_Types, Arg_Vars, Assumptions, Recs0
 			),
-			flatten(Assumptions, Assumptions_Flat),
+			include([X]>>(X \= false), Recs0, Recs),
+			maplist([Rec, Rec_Var]>>(Rec = Rec_Var:_), Recs, Rec_Vars),
+			flatten([Assumptions, Recs], Assumptions_Flat),
 			append(Assumptions_Flat, Context, Full_Context),
+			append(Arg_Vars, Rec_Vars, Full_Vars),
 
 			Case_Item = judgement(Case_Var:C, Full_Context),	
 			% bind([x(X_11), ...], Case_Var)
-			mk_binding(Arg_Vars, Case_Var, Case_Binding)
+			mk_binding(Full_Vars, Case_Var, Case_Binding)
 
 		),
 		Decl.intros, Case_Bindings, Case_Items
@@ -397,11 +402,12 @@ gen_elimination_rules(Decl, Elimination) :-
 % BETA REDUCTION RULES: derived from "local soundness" part of "logical harmony conditions"
 %
 % judgement(
-% 	<name>_elim(
+% 	elim(
+% 		<name>,
 %		intro1(Arg11, ..., Arg1(N_1)),
-%		bind(Vars1, Case1),
+%		bind([X_11, ..., R_11, ...], Case1),
 %		...,
-%		bind(VarsM, CaseM)
+%		bind([X_M1, ..., R_M1, ...], CaseM)
 %	) ~> Case1_Sub,
 %	_
 % ) :-
@@ -410,45 +416,89 @@ gen_elimination_rules(Decl, Elimination) :-
 % ...
 %
 % judgement(
-%	<name>_elim(
+%	elim(
+%		<name>,
 %		introM(ArgM1, ..., ArgM(N_M)),
-%		bind(Vars1, Case1),
+%		bind([X_11, ..., R_11, ...], Case1),
 %		...,
-%		bind(VarsM, CaseM)
+%		bind([X_M1, ..., R_M1, ...], CaseM)
 %	) ~> CaseM_Sub,
 %	_
 % ) :-
 %	substitute(CaseM, VarsM, ArgsM, CaseM_Sub).
 
 
-gen_beta_rules(Decl, Beta) :- 
+gen_beta_rules(Decl, Beta) :-
+	% <name>(T1, ..., Tk)
+	mk_type(Decl, Type),
+
+
+        % Intro				Case_Arg					RecA
+	% -----------------------------------------------------------------------------------------
+	% intro1:[ArgT_11,...]		bind([X_11, ..., R_11, ...], Case1)		[x(X_11):x(R_11), ...]
+	% ...
+	% introM:[ArgT_M1,...]		bind([X_M1, ..., R_M1, ...], CaseM)		[x(X_M1):x(R_M1), ...]
 	maplist(
-		[Intro, Case_Arg]>>(
-			Intro = _:IntroArgTypes,
-			length(IntroArgTypes, L),
-			length(IntroArgs, L),
-			mk_binding(IntroArgs, _, Case_Arg)
+		[Intro, Case_Arg, RecA]>>(
+			Intro = _:Intro_Arg_Types,
+			maplist(
+				[Arg_Type, Arg, Rec, RecA]>>(
+					Arg = x(_),
+					(
+						Arg_Type == Type
+					->	Rec = x(_), RecA = (Arg:Rec)
+					;	Rec = false, RecA = false
+					)
+				),
+				Intro_Arg_Types, Intro_Args, Rec0, RecA0
+			),
+			include([X]>>(X \= false), Rec0, Rec),	 % [x(R_11), ...]
+			include([X]>>(X \= false), RecA0, RecA), % [x(X_11):x(R_11), ...]
+			append(Intro_Args, Rec, Full_Args),
+			Case_Arg = bind(Full_Args, _)
 		),
-		Decl.intros,
-		Case_Args
+		Decl.intros, Case_Args, Case_RecAs
 	),
+
+
+
 	maplist(
-		[Intro, Case_Arg, Rule]>>(
-			gen_beta_rule(Decl, Intro, Case_Arg, Rule, Case_Args)
+		[Intro, Case_Arg, Case_RecA, Rule]>>(
+			gen_beta_rule(Decl, Intro, Case_Arg, Case_RecA, Rule, Case_Args)
 		),
-		Decl.intros,
-		Case_Args,
-		Beta
+		Decl.intros, Case_Args, Case_RecAs, Beta
 	).
 
-gen_beta_rule(Decl, IntroName:IntroArgTypes, Binding, Rule, Case_Args) :-
-	length(IntroArgTypes, L),
-	length(IntroArgs, L),
-	Obj =.. [IntroName | IntroArgs],
+gen_beta_rule(Decl, Intro_Name:Intro_Arg_Types, Binding, Case_RecA, Rule, Case_Args) :-
+	length(Intro_Arg_Types, L),
+	length(Intro_Args, L),
+	Obj =.. [Intro_Name | Intro_Args],
+
+	% elim(<name>, intro_i(X_i1,...), ...)
 	Elim =.. [elim, Decl.name, Obj | Case_Args],
+
+
+	% RecA			Rec_Elim
+	%-------------------------------------------
+	% x(X_11):x(R_11)	elim(<name>,x(X_11),...)
+	% ...
+	% x(X_M1):x(R_M1)	elim(<name>,x(X_M1),...)
+	maplist(
+		[RecA, Rec_Elim]>>(
+			RecA = x(V):_,
+			Rec_Elim =.. [elim, Decl.name, x(V) | Case_Args]
+		),
+		Case_RecA, Rec_Elims
+	),
+
+
+	append(Intro_Args, Rec_Elims, Full_Args),
+
+
 	(
-		Binding = bind(Vars, Case)
-	->	Rule = (judgement(Elim ~> Case_Sub, _) :- substitute(Case, Vars, IntroArgs, Case_Sub))
+		nonvar(Binding)
+	->	Binding = bind(Vars, Case),
+		Rule = (judgement(Elim ~> Case_Sub, _) :- substitute(Case, Vars, Full_Args, Case_Sub))
 	;	Rule = (judgement(Elim ~> Binding, _))
 	).
 
@@ -473,7 +523,7 @@ gen_beta_rule(Decl, IntroName:IntroArgTypes, Binding, Rule, Case_Args) :-
 %	) ~> Obj,
 %	Context
 % ) :-
-%	judgement(Obj:<name>(T1,...,Tk), Context).
+%	judgement(Obj:<name>(_,...,_), Context).
 
 
 gen_eta_rules(Decl, Eta) :- 
