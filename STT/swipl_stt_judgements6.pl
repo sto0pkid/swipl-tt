@@ -51,8 +51,6 @@ judgement(Term1:Type, [Term2:_|G]) :- \alpha_eq(Term1, Term2), judgement(Term1:T
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /* TODO:
-*  1) recursion: goes in beta rules
-*  2) "bind([],Expr)" ~> Expr
 *  3) variable names
 *  	* singletons --> _
 *  5) better intermediate representations
@@ -457,13 +455,12 @@ gen_beta_rules(Decl, Beta) :-
 			append(Intro_Args, Rec, Full_Args),
 			Case_Arg = bind(Full_Args, _)
 		),
-		Decl.intros, Case_Args, Case_RecAs
+		Decl.intros, Case_Args0, Case_RecAs
 	),
-
-
+	maplist([X,Y]>>(X = bind(Vars,Case), (Vars = [] -> Y = Case ; Y = X)), Case_Args0, Case_Args),
 
 	maplist(
-		[Intro, Case_Arg, Case_RecA, Rule]>>(
+		{Case_Args}/[Intro, Case_Arg, Case_RecA, Rule]>>(
 			gen_beta_rule(Decl, Intro, Case_Arg, Case_RecA, Rule, Case_Args)
 		),
 		Decl.intros, Case_Args, Case_RecAs, Beta
@@ -498,7 +495,11 @@ gen_beta_rule(Decl, Intro_Name:Intro_Arg_Types, Binding, Case_RecA, Rule, Case_A
 	(
 		nonvar(Binding)
 	->	Binding = bind(Vars, Case),
-		Rule = (judgement(Elim ~> Case_Sub, _) :- substitute(Case, Vars, Full_Args, Case_Sub))
+		(
+			Vars \= []
+		->	Rule = (judgement(Elim ~> Case_Sub, _) :- substitute(Case, Vars, Full_Args, Case_Sub))
+		;	Rule = (judgement(Elim ~> Case, _))
+		)
 	;	Rule = (judgement(Elim ~> Binding, _))
 	).
 
