@@ -1,12 +1,10 @@
-:- module(builtin, [substitute/4, alpha_eq/2, judgement/2]).
+:- module(builtin, [substitute/4, alpha_eq/2, judgement/2, convert_bindings/3]).
+:- use_module('base.pl', []).
+
+:- discontiguous judgement/2.
 
 
 % CAPTURE-AVOIDING SUBSTITUTION
-substitute(T, [], [], T).
-substitute(T, [Var | Var_Rest], [For | For_Rest], T_Out) :-
-	substitute(T, Var, For, T_1),
-	substitute(T_1, Var_Rest, For_Rest, T_Out).
-	
 substitute(x(X), x(X), For,  For) :- !.
 substitute(x(X), x(Y),   _, x(X)) :- !, X \= Y.
 
@@ -16,17 +14,28 @@ substitute([X | Rest], x(V), For, [SubX | SubRest]) :-
 	substitute(X, x(V), For, SubX),
 	substitute(Rest, x(V), For, SubRest).
 
-substitute(bind(x(X),Expr),x(Y), For, bind(x(Fresh),ExprSub)) :-
+substitute(bind(Bindings, Expr), x(Y), For, bind(New_Bindings, New_Expr_Sub)) :-
+	is_list(Bindings),
+	!,
+	convert_bindings(Bindings, Expr, New_Expr),
+	substitute(New_Expr, x(Y), For, Expr_Sub),
+	convert_bindings(New_Bindings, New_Expr_Sub, Expr_Sub).
+
+substitute(bind(x(X),Expr),x(Y), For, bind(x(Fresh), Expr_Sub)) :-
 	!,
 	gensym(x,Fresh),
 	substitute(Expr, x(X), x(Fresh), ExprFresh),
-	substitute(ExprFresh, x(Y), For, ExprSub).
+	substitute(ExprFresh, x(Y), For, Expr_Sub).
 
 substitute(Term, x(X), For, TermSub) :-
 	Term =.. [F | Args],
 	substitute(Args, x(X), For, ArgsSub),
 	TermSub =.. [F | ArgsSub].
 
+convert_bindings([], Expr, Expr) :-
+	Expr \= bind(_,_).
+convert_bindings([x(X) | Rest], Expr, bind(x(X),New_Expr)) :-
+	convert_bindings(Rest, Expr, New_Expr).
 
 % ALPHA EQUALITY
 % terms are alpha-equal if they're identical up to variable renaming

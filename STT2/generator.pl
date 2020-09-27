@@ -1,10 +1,6 @@
 :- module(swipl_stt,[gen_rules/2]).
-%:- use_module(library(gensym)).
 :- use_module('./util.pl', [list_to_tuple/2]).
-
-%:- discontiguous judgement/2.
-:- op(999, xfx, user:'~>').	% one step normalization
-:- op(999, xfx, user:'~>>').	% full normalization
+:- use_module('./base.pl', []).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
