@@ -1,8 +1,8 @@
-:- module(swipl_stt,[judgement/2, substitute/4, example/1, alpha_eq/2, gen_rules/2]).
-:- use_module(library(gensym)).
+:- module(swipl_stt,[gen_rules/2]).
+%:- use_module(library(gensym)).
 :- use_module('./util.pl', [list_to_tuple/2]).
 
-:- discontiguous judgement/2.
+%:- discontiguous judgement/2.
 :- op(999, xfx, user:'~>').	% one step normalization
 :- op(999, xfx, user:'~>>').	% full normalization
 
