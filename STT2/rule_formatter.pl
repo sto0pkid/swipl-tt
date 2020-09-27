@@ -2,36 +2,37 @@
 
 :- use_module('util.pl', [tuple_to_list/2]).
 
-format2(type_decl, (Parsed, Types_Rules), Output) :-
+format2(type_decls, (Parsed, Types_Rules), Output) :-
 	maplist(
 		[Decl, Type_Rules, Type_Rules_Str]>>(
-			maplist(
-				[Rule_Type, Rules_Str]>>(
-					get_dict(Rule_Type, Type_Rules, X),
-					format2(rules, Rule_Type-X, Rules_Str)
-				),
-				[formation, introduction, elimination, beta, eta],
-				Type_Rules_Strs
-			),
-			get_dict(name, Decl, Name),
-			format(string(Comment), "/*~n * ~w~n */", [Name]),
-			atomics_to_string([Comment | Type_Rules_Strs],"\n\n\n",Type_Rules_Str)
+			format2(type_decl, (Decl, Type_Rules), Type_Rules_Str)
 		),
 		Parsed, Types_Rules, Types_Rules_Strs
 	),
 	atomics_to_string(Types_Rules_Strs, "\n\n\n\n", Output).
 
+format2(type_decl, (Decl, Type_Rules), Type_Rules_Str) :-
+	maplist(
+		[Rule_Type, Rules_Str]>>(
+			get_dict(Rule_Type, Type_Rules, X),
+			format2(rules, Rule_Type-X, Rules_Str)
+		),
+		[formation, introduction, elimination, beta, eta],
+		Type_Rules_Strs
+	),
+	get_dict(name, Decl, Name),
+	format(string(Comment), "/*~n * ~w~n */", [Name]),
+	atomics_to_string([Comment | Type_Rules_Strs],"\n\n\n",Type_Rules_Str).
+
 
 format2(rule_head, Head,Head).
 
+format2(body_item, Body_Item, Body_Item_Str) :-
+	format(string(Body_Item_Str), "\t~w", [Body_Item]).
+
 format2(rule_body, Body, Body_Str) :-
 	tuple_to_list(Body, Body_List),
-	maplist(
-		[Body_Item, Body_Item_Str]>>(
-			format(string(Body_Item_Str), "\t~w", [Body_Item])
-		), 
-		Body_List, Body_Strs
-	),
+	maplist(format2(body_item), Body_List, Body_Strs),
 	atomics_to_string(Body_Strs, "\n", Body_Str).
 
 

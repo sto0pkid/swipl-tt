@@ -3,8 +3,8 @@
 :- use_module('rule_formatter.pl', [format2/3]).
 :- use_module('util.pl', [write_to/2]).
 
-example(Parsed, Rules) :- 
-	parse("example.tt", Parsed),
+stt2_to_prolog(Input_Path) :-
+	parse(Input_Path, Parsed),
 	maplist(gen_rules, Parsed, Rules),
-	format2(type_decl, (Parsed, Rules), Output),
-	write_to("generated_rules.pl", Output).
+	format2(type_decls, (Parsed, Rules), Output),
+	write(Output).
