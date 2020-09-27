@@ -22,7 +22,7 @@ example(Parsed, Types_Rules) :-
 				Type_Rules_Strs
 			),
 			get_dict(name, Decl, Name),
-			format(string(Comment), "/*~n * ~w~n*/", [Name]),
+			format(string(Comment), "/*~n * ~w~n */", [Name]),
 			atomics_to_string([Comment | Type_Rules_Strs],"\n\n\n",Type_Rules_Str)
 		),
 		Parsed,
@@ -51,6 +51,6 @@ write_rule((Head :- Body), Rule_Str) :-
 	),
 	atomics_to_string(Body_Strs, "\n", Body_Str),
 	format(string(Rule_Str), "~w :-\n~w.", [Head, Body_Str]).
+
 write_rule(Head, Rule_Str) :-
 	format(string(Rule_Str), "~w.", [Head]).
-
