@@ -96,6 +96,7 @@ This would be a problem if we could express a proposition like `is_named_f`, we 
 	is_named_f(f) /\ ~is_named_f(g)
 
 but,
+
 	f = g -> is_named_f(f) -> is_named_f(g)
 
 so we'd have a contradiction.
