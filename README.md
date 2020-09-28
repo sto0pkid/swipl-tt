@@ -78,6 +78,30 @@ And its application would look like
 
 These two definitions calculate the same outputs for the same inputs but they take different sequences of steps to get there. Is that not the "internal behavior/properties" we're looking for? In fact it's not! These are indeed different sequences of steps but they're happening *outside* the function. The terms `2 + 2` and `2 +' 2` are *already* the function outputs, and the sequences of steps are simply a reduction of that output to a normal form. There is no internal behavior, they are mathematical functions, just as we've defined them to be!
 
-Ok but still, you could hypothetically associate this reduction behavior or some other "internal" property like the string representations of these functions. But there's a reason we wouldn't want to do that: if we're *defining* these objects to be mathematical functions, then by the definition of equality of functions, they are equal if they have equal outputs for equal inputs. And a defining property of equality is the principle of substitution: given a proposition `P`, if `P(x)` is true, and `x = y`, then `P(y)` is true. But if `P` is a proposition about some "internal" property of functions, and we have two functions `f` and `g` with `f = g` but with `P(f)` true and `P(g)` false, then by the principle of substitution we can get that `P(g)` is true from `P(f)` and `f = g`, but then we have a contradiction because we already have that `P(g)` is false. More generally: functions and propositions must be "congruent" with respect to the equivalence relation defined by substitutability.
+Ok but still, you could hypothetically associate this reduction behavior or some other "internal" property like the string representations of these functions. But there's a reason we wouldn't want to do that: if we're *defining* these objects to be mathematical functions, then by the definition of equality of functions, they are equal if they have equal outputs for equal inputs. And a defining property of equality is the principle of substitution: given a proposition `P`, if `P(x)` is true, and `x = y`, then `P(y)` is true.
 
-There might be some way around this but whatever that way is it probably shouldn't break the basic properties of extensional equality of functions or the principle of substitution.
+	principle_of_substitution : x = y -> P(x) -> P(y)
+
+
+But if `P` is a proposition about some "internal" property of functions, and we have two functions `f` and `g` with `f = g` but with `P(f)` true and `P(g)` false, then by the principle of substitution we can get that `P(g)` is true from `P(f)` and `f = g`, but then we have a contradiction because we already have that `P(g)` is false. To restate:
+
+	f = g -> P(f) -> ~P(g) -> false
+
+because
+
+	f = g -> P(f) -> P(g)
+
+This would be a problem if we could express a proposition like `is_named_f`, we would have:
+
+	is_named_f(f) /\ ~is_named_f(g)
+
+but,
+	f = g -> is_named_f(f) -> is_named_f(g)
+
+so we'd have a contradiction.
+
+So that's the fundamental reason we can't make propositions that inspect these "internal"/"implementation detail" properties of objects: the principle of substitution forces that if two objects are declared equal, then no proposition can distinguish them by being true for one and false for the other without yielding a contradiction.
+
+And it's reasonable to say that this is a feature and not a bug, this is just the logic working correctly. This isn't to say that one shouldn't design their languages or extend the logic in such a way that you can inspect these internal properties of objects, but however that's done it probably shouldn't break the basic properties of extensional equality of functions or the principle of substitution.
+
+TODO: ok so maybe we accept that we don't want to break our object language by trying to make it inspect things that we've defined not to exist in it, but these objects in our object language still do have "implementation" detail we want to be able to inspect in the full programming environment that surrounds that object language, what are possible approaches to incorporating inspection in an appropriate way?
