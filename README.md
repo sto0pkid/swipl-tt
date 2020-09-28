@@ -47,12 +47,14 @@ On a set-theoretic level, the principle of explosion is a consequence of the fac
 
 ### Why can't propositions inspect the internal behavior/properties of functions?
 Because functions are *defined* not to have any "internal behavior/properties", and even in their implementation they don't really have any. Take for example the function 
-	_+_ : nat -> nat -> nat
+
+	+ : nat -> nat -> nat
 	0 	+ y = y
 	(suc x) + y = suc (x + y)
 
 We can apply this and get a result:
-	  2 + 2
+
+	2 + 2
 	= (suc (suc 0)) + (suc (suc 0))
 	= suc ((suc 0) + (suc (suc 0)))
 	= suc (suc (0 + (suc (suc 0))))
@@ -60,12 +62,14 @@ We can apply this and get a result:
 	= 4
 
 We could have alternatively defined `_+_` like:
-	_+'_ : nat -> nat -> nat
+
+	+' : nat -> nat -> nat
 	x +' 0 = x
 	x +' (suc y) = suc (x + y)
 
 And its application would look like
-	  2 +' 2
+
+	2 +' 2
 	= (suc (suc 0)) +' (suc (suc 0))
 	= suc ((suc (suc 0)) +' (suc 0))
 	= suc (suc ((suc (suc 0)) +' 0))
