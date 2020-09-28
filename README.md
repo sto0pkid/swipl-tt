@@ -41,6 +41,39 @@ I don't know if there are limitations to this trick or if it's always at least t
 
 The principle is "just kinda there", at least in this general framework of logic.
 
-On a proof-theoretic level, the principle of explosion simply arises from the general principle for defining positive types from their introduction rules. If you look at the introduction rules for the empty type (there are none) and then define the (positive) elimination rule for it based on those rules, it's the principle of explosion. The general principle for defining positive types is what gives us rules for, ex.. enum/union types of any number of elements. If we take the enum/union type of 0 elements, it's the empty type and the elimination rule for it is the principle of explosion in the same pattern as how the elimination rule is defined for for any other number of elements.
+On a proof-theoretic level, the principle of explosion simply arises from the general principle for defining positive types from their introduction rules. If you look at the introduction rules for the empty type (there are none) and then define the (positive) elimination rule for it based on those rules, it's the principle of explosion. The general principle for defining positive types is what gives us rules for, ex.. enum/union types of any number of elements. If we take the enum/union type of 0 elements, it's the empty type and the elimination rule for it is the principle of explosion in the same pattern as how the elimination rule is defined for any other number of elements.
 
 On a set-theoretic level, the principle of explosion is a consequence of the fact that the empty set is a subset of every set, so any inhabitant of the empty set must be an inhabitant of every set, which corresponds to any proof of the False type being a proof of every proposition (under the interpretation of propositions as the sets of their proofs).
+
+### Why can't propositions inspect the internal behavior/properties of functions?
+Because functions are *defined* not to have any "internal behavior/properties", and even in their implementation they don't really have any. Take for example the function 
+	_+_ : nat -> nat -> nat
+	0 	+ y = y
+	(suc x) + y = suc (x + y)
+
+We can apply this and get a result:
+	  2 + 2
+	= (suc (suc 0)) + (suc (suc 0))
+	= suc ((suc 0) + (suc (suc 0)))
+	= suc (suc (0 + (suc (suc 0))))
+	= suc (suc (suc (suc 0)))
+	= 4
+
+We could have alternatively defined `_+_` like:
+	_+'_ : nat -> nat -> nat
+	x +' 0 = x
+	x +' (suc y) = suc (x + y)
+
+And its application would look like
+	  2 +' 2
+	= (suc (suc 0)) +' (suc (suc 0))
+	= suc ((suc (suc 0)) +' (suc 0))
+	= suc (suc ((suc (suc 0)) +' 0))
+	= suc (suc (suc (suc 0)))
+	= 4
+
+These two definitions calculate the same outputs for the same inputs but they take different sequences of steps to get there. Is that not the "internal behavior/properties" we're looking for? In fact it's not! These are indeed different sequences of steps but they're happening *outside* the function. The terms `2 + 2` and `2 +' 2` are *already* the function outputs, and the sequences of steps are simply a reduction of that output to a normal form. There is no internal behavior, they are mathematical functions, just as we've defined them to be!
+
+Ok but still, you could hypothetically associate this reduction behavior or some other "internal" property like the string representations of these functions. But there's a reason we wouldn't want to do that: if we're *defining* these objects to be mathematical functions, then by the definition of equality of functions, they are equal if they have equal outputs for equal inputs. And a defining property of equality is the principle of substitution: given a proposition `P`, if `P(x)` is true, and `x = y`, then `P(y)` is true. But if `P` is a proposition about some "internal" property of functions, and we have two functions `f` and `g` with `f = g` but with `P(f)` true and `P(g)` false, then by the principle of substitution we can get that `P(g)` is true from `P(f)` and `f = g`, but then we have a contradiction because we already have that `P(g)` is false. More generally: functions and propositions must be "congruent" with respect to the equivalence relation defined by substitutability.
+
+There might be some way around this but whatever that way is it probably shouldn't break the basic properties of extensional equality of functions or the principle of substitution.
