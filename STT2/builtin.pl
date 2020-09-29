@@ -1,7 +1,7 @@
-:- module(builtin, [substitute/4, alpha_eq/2, judgement/2, convert_bindings/3]).
 :- use_module('base.pl', []).
 
 :- discontiguous judgement/2.
+:- multifile judgement/2.
 
 
 % CAPTURE-AVOIDING SUBSTITUTION
@@ -52,8 +52,8 @@ alpha_eq(T1, T2) :-
 	maplist(alpha_eq, Args1, Args2).
 
 % HYPOTHESIS RULE
-judgement(Term1:Type, [Term2:Type|_]) :- alpha_eq(Term1, Term2), !.
-judgement(Term1:Type, [Term2:_|G]) :- \alpha_eq(Term1, Term2), judgement(Term1:Type,G).
+judgement(x(X):Type, [x(X):Type|_]) :- !.
+judgement(x(X):Type, [x(Y):_|G]) :- X \= Y, judgement(x(X):Type,G).
 
 
 % CONGRUENCE RULE

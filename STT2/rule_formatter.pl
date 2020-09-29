@@ -9,7 +9,8 @@ format2(type_decls, (Parsed, Types_Rules), Output) :-
 		),
 		Parsed, Types_Rules, Types_Rules_Strs
 	),
-	atomics_to_string(Types_Rules_Strs, "\n\n\n\n", Output).
+	atomics_to_string(Types_Rules_Strs, "\n\n\n\n", Output0),
+	format(string(Output), ":- use_module('base.pl', []).\n:- consult('builtin.pl').\n\n~w", [Output0]).
 
 format2(type_decl, (Decl, Type_Rules), Type_Rules_Str) :-
 	maplist(
@@ -33,7 +34,7 @@ format2(body_item, Body_Item, Body_Item_Str) :-
 format2(rule_body, Body, Body_Str) :-
 	tuple_to_list(Body, Body_List),
 	maplist(format2(body_item), Body_List, Body_Strs),
-	atomics_to_string(Body_Strs, "\n", Body_Str).
+	atomics_to_string(Body_Strs, ",\n", Body_Str).
 
 
 format2(rules, Type-Rules, Rules_Str) :-
