@@ -55,6 +55,8 @@ alpha_eq(T1, T2) :-
 judgement(x(X):Type, [x(X):Type|_]) :- !.
 judgement(x(X):Type, [x(Y):_|G]) :- X \= Y, judgement(x(X):Type,G).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % CONGRUENCE RULE
 judgement(T1 ~> T2, G) :-
@@ -94,4 +96,29 @@ judgement(T1 = T2, G) :-
 *
 */
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% IMPLICATION / FUNCTION TYPE
+% formation
+judgement(function(A, B):type, G) :- 
+	judgement(A:type, G),
+	judgement(B:type, G).
+
+% introduction
+judgement(lambda(bind([x(V)],Expr)):function(A,B), G) :- 
+	judgement(function(A,B):type, G),
+	judgement(Expr:B, [ x(V):A | G]).
+
+% elimination
+judgement(apply(F,X):B,  G) :- 
+	judgement(F:function(A,B), G),
+	judgement(X:A, G).
+
+
+% beta
+judgement(apply(lambda(bind([x(V)], Expr)), X) ~> FX, _) :-
+	substitute(Expr, x(V), X, FX).
+
+% eta
+judgement(lambda(bind([x(V)],apply(F,x(V)))) ~> F, G) :-
+	judgement(F:function(_,_),G).
