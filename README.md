@@ -2,6 +2,21 @@
 
 This project is meant to be an interactive tutorial on type theory, starting from the very basics. SWI-Prolog is used as an approximation of the natural deduction / sequent-calculus style systems that are typically used to formulate systems of type theory.
 
+## Tutorial
+
+"Natural Deduction and the Curry-Howard Isomorphism", Andreas Abel: http://www.cse.chalmers.se/~abela/eafit2017/lecture1-nd.pdf
+* Figure 1: Intuitionistic propositional logic, without explicit hypotheses
+* Figure 2: Intuitionistic propositional logic, _with_ explicit hypotheses
+ * corresponds to `IPL/swipl_ipl.pl`
+* Page 16: Simply typed lambda calculus
+ * corresponds to `STT/swipl_stt_judgements5.pl`
+* Page 20: Curry-Howard isomorphism table
+ * expresses direct correspondence between the rules of IPL with explicit hypotheses and simply typed lambda calculus.
+
+"A Couple Of Meta-interpreters In Prolog"
+* see section "Showing proofs" and compare with the IPL and STT formulations; see comments in `IPL/swipl_ipl.pl`
+
+
 
 ## FAQ
 ### Why do you need to encode the principle of explosion?
@@ -106,3 +121,5 @@ So that's the fundamental reason we can't make propositions that inspect these "
 And it's reasonable to say that this is a feature and not a bug, this is just the logic working correctly. This isn't to say that one shouldn't design their languages or extend the logic in such a way that you can inspect these internal properties of objects, but however that's done it probably shouldn't break the basic properties of extensional equality of functions or the principle of substitution.
 
 TODO: ok so maybe we accept that we don't want to break our object language by trying to make it inspect things that we've defined not to exist in it, but these objects in our object language still do have "implementation" detail we want to be able to inspect in the full programming environment that surrounds that object language, what are possible approaches to incorporating inspection in an appropriate way?
+
+TLDR: "inspection as godelization"; although we can't start with a function and get its representation propositionally, we can get its representation _judgementally_ and from the representation we _can_ propositionally recover the function (up to term equivalence!).

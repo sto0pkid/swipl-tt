@@ -11,6 +11,7 @@
 %  	* ex.. preparation stage
 %  	* ex.. "no syntax sugar" stage
 %  	* ex.. separate stage for eliminating bindings
+%  6) doesn't handle parentheses in constructor declarations
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -126,7 +127,6 @@ mk_rule(Head, Body, (Head :- Body)).
 
 mk_type(Decl, Type) :-
 	Type =.. [Decl.name | Decl.params].
-
 
 
 
