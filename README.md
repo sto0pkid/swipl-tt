@@ -7,13 +7,13 @@ This project is meant to be an interactive tutorial on type theory, starting fro
 "Natural Deduction and the Curry-Howard Isomorphism", Andreas Abel: http://www.cse.chalmers.se/~abela/eafit2017/lecture1-nd.pdf
 * Figure 1: Intuitionistic propositional logic, without explicit hypotheses
 * Figure 2: Intuitionistic propositional logic, _with_ explicit hypotheses
- * corresponds to `IPL/swipl_ipl.pl`
+	* corresponds to `IPL/swipl_ipl.pl`
 * Page 16: Simply typed lambda calculus
- * corresponds to `STT/swipl_stt_judgements5.pl`
+	* corresponds to `STT/swipl_stt_judgements5.pl`
 * Page 20: Curry-Howard isomorphism table
- * expresses direct correspondence between the rules of IPL with explicit hypotheses and simply typed lambda calculus.
+	* expresses direct correspondence between the rules of IPL with explicit hypotheses and simply typed lambda calculus.
 
-"A Couple Of Meta-interpreters In Prolog"
+"A Couple Of Meta-interpreters In Prolog", Markus Triska: https://www.metalevel.at/acomip/
 * see section "Showing proofs" and compare with the IPL and STT formulations; see comments in `IPL/swipl_ipl.pl`
 
 
