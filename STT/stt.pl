@@ -9,15 +9,10 @@
 
 
 % CAPTURE-AVOIDING SUBSTITUTION
-substitute(X, Y, For,  X_Sub) :-
-	var(X),
-	!,
-	(
-		X == Y
-	->	X_Sub = For
-	;	X_Sub = X
-	).
-	
+substitute(x(X), x(Y), For,  For) :- X == Y, !.
+substitute(x(X), x(Y),   _, x(X)) :- X \== Y, !.
+
+
 substitute([], _, _, []) :- !.
 substitute([Term | Rest], X, For, [Term_Sub | Rest_Sub]) :-
 	!,
@@ -54,8 +49,8 @@ T1 @= T2 :-
 
 
 % HYPOTHESIS RULE
-[X:T|_] # X:T.
-[X:_|G] # Y:T :- X \== Y, G # Y:T.
+[x(X):T|_] # x(Y):T :- X == Y, !.
+[x(X):_|G] # x(Y):T :- X \== Y, G # x(Y):T.
 
 
 
@@ -76,6 +71,7 @@ G # explosion(F):C :-
 
 % eta?
 G # explosion(F) ~> F :-
+	nonvar(F),
 	G # F:empty.
 
 
@@ -282,19 +278,20 @@ G # suc(N):nat :-
 	G # N:nat.
 
 % elimination
-G # nat_rec(N,Z,bind(x(V),S)):C :-
+G # nat_rec(N,Z,bind(x(V),bind(x(R),S))):C :-
 	G # N:nat,
 	G # type(C),
 	G # Z:C,
-	[x(V):nat|G] # S:C.
+	[x(V):nat, x(R):C|G] # S:C.
 
 % beta
 _ # nat_rec(0, Z, _) ~> Z.
-_ # nat_rec(suc(N), _, bind(x(V),S)) ~> S_Sub :-
-	substitute(S, x(V), N, S_Sub).
+_ # nat_rec(suc(N), Z, bind(x(V),bind(x(R),S))) ~> S_Sub :-
+	substitute(S, x(V), N, S_Sub0),
+	substitute(S_Sub0, x(R), nat_rec(N, Z, bind(x(V),bind(x(R),S))), S_Sub).
 
 % eta
-G # nat_rec(N, 0, bind(x(V),suc(x(V)))) ~> N :-
+G # nat_rec(N, 0, bind(x(V),bind(_,suc(x(V))))) ~> N :-
 	G # N:nat.
 
 
@@ -315,20 +312,21 @@ G # [X | Xs]:list(A) :-
 	G # Xs:list(A).
 
 % elimination
-G # list_rec(L, Last, bind(x(V),bind(x(W),F))):C :-
+G # list_rec(L, Last, bind(x(V),bind(x(W),bind(x(R),F)))):C :-
 	G # type(C),
 	G # L:list(_),
 	G # Last:C,
-	[x(V):A, x(W):list(A)|G] # F:C.
+	[x(V):A, x(W):list(A), x(R):C|G] # F:C.
 
 
 % beta
 _ # list_rec([], Nil, _) ~> Nil.
-_ # list_rec([X|Xs], _, bind(x(V),bind(x(W),Cons))) ~> Cons_Sub :-
+_ # list_rec([X|Xs], Nil, bind(x(V),bind(x(W),bind(x(R),Cons)))) ~> Cons_Sub :-
 	substitute(Cons, x(V), X, Cons_Sub1),
-	substitute(Cons_Sub1, x(W), Xs, Cons_Sub).
+	substitute(Cons_Sub1, x(W), Xs, Cons_Sub2),
+	substitute(Cons_Sub2, x(R), list_rec(Xs, Nil, bind(x(V),bind(x(W),bind(x(R),Cons)))), Cons_Sub).
 % eta
-G # list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))) ~> L :-
+G # list_rec(L, [], bind(x(V),bind(x(W),bind(_,[x(V)|x(W)])))) ~> L :-
 	G # L:list(_).
 
 
@@ -340,6 +338,14 @@ G # list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))) ~> L :-
 */
 
 % CONGRUENCE RULE
+_ # x(_) ~> _ :-
+	!,
+	false.
+
+G # bind(x(X),T1) ~> bind(x(X),T2) :-
+	!,
+	G # T1 ~> T2.
+
 G # T1 ~> T2 :-
 	T1 =.. [F | Args_1],
 	cong(Args_1, Args_2, G),
