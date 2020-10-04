@@ -1,6 +1,11 @@
 :- module(swipl_stt,[substitute/4, '#'/2]).
 :- use_module(library(gensym)).
-:- op(999, xfx, #).
+:- op(999, xfx, user:'#').
+:- op(998, xfx, user:'~>').	% one step normalization
+:- op(998, xfx, user:'~>>').	% full normalization
+:- op(998, xfx, user:'@=').
+
+
 
 
 % CAPTURE-AVOIDING SUBSTITUTION
@@ -30,9 +35,27 @@ substitute(Term, X, For, Term_Sub) :-
 	Term_Sub =.. [F | Args_Sub].
 
 
+% ALPHA EQUALITY
+% terms are alpha-equal if they're identical up to variable renaming
+% in De Bruijn index notation, alpha-equal terms are syntactically identical
+x(X) @= x(X) :- !.
+bind(x(X),A) @= bind(x(Y),B) :-
+	!,
+	substitute(B, x(Y), x(X), B_Sub),
+	A @= B_Sub.
+
+T1 @= T2 :-
+	T1 =.. [F1 | Args1],
+	T2 =.. [F2 | Args2],
+	F1 = F2,
+	maplist(@=, Args1, Args2).
+
+
+
+
 % HYPOTHESIS RULE
 [X:T|_] # X:T.
-[X:_|G] # Y:T :-	X \= Y, G # Y:T.
+[X:_|G] # Y:T :- X \== Y, G # Y:T.
 
 
 
@@ -52,7 +75,7 @@ G # explosion(F):C :-
 % -- no beta rules because no introduction rules
 
 % eta?
-G # F = explosion(F) :-
+G # explosion(F) ~> F :-
 	G # F:empty.
 
 
@@ -84,7 +107,7 @@ G # F = explosion(F) :-
 
 
 
-% UNIT / TRUE / TOP / 1-member type ; nullary product)
+% UNIT / TRUE / TOP / 1-member type ; nullary product
 % formation
 _ # type(unit).
 
@@ -98,10 +121,10 @@ G # unit_elim(U, X):C :-
 	G # X:C.
 
 % beta
-_ # unit_elim(null, X) = X.
+_ # unit_elim(null, X) ~> X.
 
 % eta
-G # U = unit_elim(U,null) :-
+G # unit_elim(U,null) ~> U :-
 	G # U:unit.
 
 
@@ -126,11 +149,11 @@ G # if_then_else(B, X, Y):C :-
 	G # Y:C.
 
 % beta
-_ # if_then_else(true, X, _) = X.
-_ # if_then_else(false, _, Y) = Y.
+_ # if_then_else(true, X, _) ~> X.
+_ # if_then_else(false, _, Y) ~> Y.
 
 % eta
-G # B = if_then_else(B, true, false) :-
+G # if_then_else(B, true, false) ~> B :-
 	G # B:bool.
 
 /*
@@ -144,174 +167,170 @@ G # B = if_then_else(B, true, false) :-
 
 
 
-/*
 % PAIR / PRODUCT / CONJUNCTION / "AND" type
 % formation
-judgement(type(pair(A,B)), G) :- 
-	judgement(type(A), G),
-	judgement(type(B), G).
+G # type(pair(A,B)) :- 
+	G # type(A),
+	G # type(B).
 
 
 % introduction
-judgement((X,Y):pair(A,B), G) :- 
-	judgement(type(pair(A,B)), G),
-	judgement(X:A, G),
-	judgement(Y:B, G).
+G # (X,Y):pair(A,B) :- 
+	G # type(pair(A,B)),
+	G # X:A,
+	G # Y:B.
 
 % elimination
-judgement(first(P):A, G) :- 
-	judgement(P:pair(A,_), G).
+G # first(P):A :- 
+	G # P:pair(A,_).
 
-judgement(second(P):B, G) :- 
-	judgement(P:pair(_,B), G).
+G # second(P):B :- 
+	G # P:pair(_,B).
 
 % beta
-judgement(first((X,_)) = X, _).
-judgement(second((_,Y)) = Y, _).
+_ # first((X,_)) ~> X.
+_ # second((_,Y)) ~> Y.
 
 % eta
-judgement(P = (first(P), second(P)), G) :-
-	judgement(P:pair(_,_), G).
-*/
+G # (first(P), second(P)) ~> P :-
+	G # P:pair(_,_).
 
 
 
 
 
 
-/*
+
 % DISJOINT UNION / DISJUNCTION / "OR" TYPE
 
 % formation
-judgement(type(union(A, B)), G) :- 
-	judgement(type(A), G),
-	judgement(type(B), G).
+G # type(union(A, B)) :- 
+	G # type(A),
+	G # type(B).
 
 % introduction
-judgement(left(X):union(A, B), G) :- 
-	judgement(type(union(A, B)), G),
-	judgement(X:A, G).
+G # left(X):union(A, B) :- 
+	G # type(union(A, B)),
+	G # X:A.
 
-judgement(right(Y):union(A,B), G) :- 
-	judgement(type(union(A,B)), G),
-	judgement(Y:B, G).
+G # right(Y):union(A,B) :- 
+	G # type(union(A,B)),
+	G # Y:B.
 
 % elimination
-judgement(case(P, bind(x(V),L), bind(x(W),R)):C, G) :- 
-	judgement(P:union(A,B), G),
-	judgement(type(C), G),
-	judgement(L:C, [x(V):A | G]),
-	judgement(R:C, [x(W):B | G]).
+G # case(P, bind(x(V),L), bind(x(W),R)):C :- 
+	G # P:union(A,B),
+	G # type(C),
+	[x(V):A | G] # L:C,
+	[x(W):B | G] # R:C.
 
 % beta
-judgement(case(left(X), bind(x(V),L), _) = LSub, _) :-
+_ # case(left(X), bind(x(V),L), _) ~> LSub :-
 	substitute(L, x(V), X, LSub).
-judgement(case(right(Y), _, bind(x(V),R)) = RSub, _) :-
+
+_ # case(right(Y), _, bind(x(V),R)) ~> RSub :-
 	substitute(R, x(V), Y, RSub).
 
 
 % eta
-judgement(C = case(C, bind(x(V),left(x(V))), bind(x(W),right(x(W)))), G) :-
-	judgement(C:union(_,_), G).
-*/
+G # case(C, bind(x(V),left(x(V))), bind(x(W),right(x(W)))) ~> C :-
+	G # C:union(_,_).
 
 
 
 
 
-/*
+
 % IMPLICATION / FUNCTION TYPE
 % formation
-judgement(type(function(A, B)), G) :- 
-	judgement(type(A), G),
-	judgement(type(B), G).
+G # type(function(A, B)) :- 
+	G # type(A),
+	G # type(B).
 
 % introduction
-judgement(lambda(bind(x(V),Expr)):function(A,B), G) :- 
-	judgement(type(function(A,B)), G),
-	judgement(Expr:B, [ x(V):A | G]).
+G # lambda(bind(x(V),Expr)):function(A,B) :- 
+	G # type(function(A,B)),
+	[ x(V):A | G] # Expr:B.
 
 % elimination
-judgement(apply(F,X):B,  G) :- 
-	judgement(F:function(A,B), G),
-	judgement(X:A, G).
+G # apply(F,X):B :- 
+	G # F:function(A,B),
+	G # X:A.
 
 
 % beta
-judgement(apply(lambda(bind(x(V), Expr)), X) = FX, _) :-
+_ # apply(lambda(bind(x(V), Expr)), X) ~> FX :-
 	substitute(Expr, x(V), X, FX).
 
 % eta
-judgement(F = lambda(bind(x(V),apply(F,x(V)))), G) :-
-	judgement(F:function(_,_),G).
-
-*/
+G # lambda(bind(x(V),apply(F,x(V)))) ~> F :-
+	G # F:function(_,_).
 
 
 
 
-/*
+
+
+
 % NATURAL NUMBERS
 % formation
-judgement(type(nat), _).
+_ # type(nat).
 
 % introduction
-judgement(0:nat, _).
-judgement(suc(N):nat, G) :-
-	judgement(N:nat, G).
+_ # 0:nat.
+G # suc(N):nat :-
+	G # N:nat.
 
 % elimination
-judgement(nat_rec(N,Z,bind(x(V),S)):C, G) :-
-	judgement(N:nat, G),
-	judgement(type(C), G),
-	judgement(Z:C, G),
-	judgement(S:C, [x(V):nat|G]).
+G # nat_rec(N,Z,bind(x(V),S)):C :-
+	G # N:nat,
+	G # type(C),
+	G # Z:C,
+	[x(V):nat|G] # S:C.
 
 % beta
-judgement(nat_rec(0, Z, S) = Z, _).
-judgement(nat_rec(suc(N), Z, bind(x(V),S)) = S_Sub, _) :-
+_ # nat_rec(0, Z, _) ~> Z.
+_ # nat_rec(suc(N), _, bind(x(V),S)) ~> S_Sub :-
 	substitute(S, x(V), N, S_Sub).
 
 % eta
-judgement(N = nat_rec(N, 0, bind(x(V),suc(x(V)))), G) :-
-	judgement(N:nat, G).
-
-*/
+G # nat_rec(N, 0, bind(x(V),suc(x(V)))) ~> N :-
+	G # N:nat.
 
 
 
-/*
+
 % LIST TYPE
 % formation
-judgement(type(list(A)), G) :-
-	judgement(type(A), G).
+G # type(list(A)) :-
+	G # type(A).
 
 % introduction
-judgement([]:list(A), G) :-
-	judgement(type(list(A)), G).
-judgement([X | Xs]:list(A), G) :-
-	judgement(type(list(A)), G),
-	judgement(X:A, G),
-	judgement(Xs:list(A), G).
+G # []:list(A) :-
+	G # type(list(A)).
+
+G # [X | Xs]:list(A) :-
+	G # type(list(A)),
+	G # X:A,
+	G # Xs:list(A).
 
 % elimination
-judgement(list_rec(L, Last, bind(x(V),bind(x(W),F))):C, G) :-
-	judgement(type(C), G),
-	judgement(L:list(_), G),
-	judgement(Last:C, G),
-	judgement(F:C, [x(V):list(A)|G]).
+G # list_rec(L, Last, bind(x(V),bind(x(W),F))):C :-
+	G # type(C),
+	G # L:list(_),
+	G # Last:C,
+	[x(V):A, x(W):list(A)|G] # F:C.
 
 
 % beta
-judgement(list_rec([], Nil, _) = Nil, _).
-judgement(list_rec([X|Xs], _, bind(x(V),bind(x(W),Cons))) = Cons_Sub, _) :-
+_ # list_rec([], Nil, _) ~> Nil.
+_ # list_rec([X|Xs], _, bind(x(V),bind(x(W),Cons))) ~> Cons_Sub :-
 	substitute(Cons, x(V), X, Cons_Sub1),
 	substitute(Cons_Sub1, x(W), Xs, Cons_Sub).
 % eta
-judgement(L = list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))), G) :-
-	judgement(L:list(_), G).
+G # list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))) ~> L :-
+	G # L:list(_).
 
-*/
 
 /*
 * Notes:
@@ -320,35 +339,32 @@ judgement(L = list_rec(L, [], bind(x(V),bind(x(W),[x(V)|x(W)]))), G) :-
 *
 */
 
-
-
-
-/*
 % CONGRUENCE RULE
-judgement(T1 = T2, G) :-
-	T =.. [F | Args],
-	maplist([X,Y]>>judgement(X = Y, G), Args, Args_Reduced),
-	T_Reduced =.. [F | Args_Reduced],
-	(
-		Args \= Args_Reduced
-	->	judgement(T_Reduced = T_Out, G)
-	;	T_Out = T_Reduced
-	).
-*/
+G # T1 ~> T2 :-
+	T1 =.. [F | Args_1],
+	cong(Args_1, Args_2, G),
+	T2 =.. [F | Args_2].
+
+
+% NORMALIZATION
+G # T1 ~>> NF :-
+	G # T1 ~> T2,
+	G # T2 ~>> NF.
+
+G # NF ~>> NF :-
+	\+(G # NF ~> _).
 
 
 
+% EQUALITY
+G # T1 = T2 :-
+	G # T1 ~>> NF1,
+	G # T2 ~>> NF2,
+	NF1 @= NF2.
 
 
-example(X) :-
-	beta_reduction(
-		apply(
-			apply(
-				lambda(bind(x(1), lambda(bind(x(2), x(1))))),
-				"hi"
-			),
-			"bye"
-		),
-		X
-	).
-
+cong([Arg_1 | Args], [Arg_2 | Args], G) :-
+	G # Arg_1 ~> Arg_2.
+cong([Arg | Args_1], [Arg | Args_2], G) :-
+	\+(G # Arg ~> _),
+	cong(Args_1, Args_2, G).
