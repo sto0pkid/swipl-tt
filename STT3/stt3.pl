@@ -5,25 +5,32 @@
 :- op(998, xfx, user:'@=').
 
 % CAPTURE-AVOIDING SUBSTITUTION
-% substitute(Term, Var, For, New_Term)
+% substitute(Var, Replacement, Term, New_Term)
+% substitute Var for Replacement in Term to get New_Term
 
-substitute(x(X), x(Y), For,  For) :- X == Y, !.
-substitute(x(X), x(Y),   _, x(X)) :- X \== Y, !.
+substitute(x(X), For, x(X), For).
+substitute(x(Y), _, x(X), x(X)) :- X \== Y, !.
 
-substitute(Atom, _, _, Atom) :-
+substitute(_, _, Atom, Atom) :-
 	atom(Atom),
 	!.
 
-substitute(bind(x(X),Expr), x(Y), For, bind(x(Fresh),Expr_Sub)) :-
+substitute(_, _, 0, 0) :-
+	!.
+
+substitute(_, _, 1, 1) :-
+	!.
+
+substitute(x(Y), For, bind(x(X),Expr), bind(x(Fresh),Expr_Sub)) :-
 	!,
 	gensym(x,Fresh),
 	substitute(Expr, x(X), x(Fresh), Expr_Fresh),
 	substitute(Expr_Fresh, x(Y), For, Expr_Sub).
 
-substitute(Term, x(X), For, New_Term) :-
+substitute(x(X), For, Term, New_Term) :-
 	Term =.. Subterms,
 	maplist(
-		{X}/[Subterm, New_Subterm]>>(substitute(Subterm,x(X),For,New_Subterm)),
+		substitute(x(X),For),
 		Subterms, New_Subterms
 	),
 	New_Term =.. New_Subterms.
@@ -42,7 +49,7 @@ cong([Arg | Args_1], [Arg | Args_2], G) :-
 x(X) @= x(X) :- !.
 bind(x(X),A) @= bind(x(Y),B) :-
 	!,
-	substitute(B, x(Y), x(X), B_Sub),
+	substitute(x(Y), x(X), B, B_Sub),
 	A @= B_Sub.
 
 T1 @= T2 :-
@@ -136,8 +143,8 @@ G # lambda(bind(x(X),E)):S->T :-
 	G # type(S->T),
 	[x(X):S|G] # E:T.
 
-G # intro(E):mu(bind(x(X),T)) :- 
-	substitute(T,x(X),mu(bind(x(X),T)),T_Sub),
+G # fold(T,E):mu(bind(x(X),T)) :- 
+	substitute(x(X),mu(bind(x(X),T)),T,T_Sub),
 	G # E:T_Sub.
 
 
@@ -157,27 +164,27 @@ G # snd(P):T :- G # P:_*T.
 
 G # apply(F,X):T :- G # X:S, G # F:S->T.
 
-G # unfold(O):E :-
+G # unfold(T,O):E :-
 	G # O:mu(bind(x(X),T)),
-	substitute(T,x(X),mu(bind(x(X),T)),E).
+	substitute(x(X), mu(bind(x(X),T)), T, E).
 
 
 
 % BETA RULES
 _ # case(left(A), bind(x(X),L), _) ~> L_Sub :-
-	substitute(L,x(X),A,L_Sub).
+	substitute(x(X), A, L, L_Sub).
 
 _ # case(right(B), _, bind(x(Y),R)) ~> R_Sub :-
-	substitute(R,x(Y),B,R_Sub).
+	substitute(x(Y), B, R, R_Sub).
 
 _ # fst((X,_)) ~> X.
 
 _ # snd((_,Y)) ~> Y.
 
-_ # apply(lambda(bind(x(X),E)), X) ~> E_Sub :-
-	substitute(E,x(X),X,E_Sub).
+_ # apply(lambda(bind(x(V),E)), X) ~> E_Sub :-
+	substitute(x(V), X, E, E_Sub).
 
-_ # unfold(fold(O)) ~> O.
+_ # unfold(T,fold(T,O)) ~> O.
 
 
 % ETA RULES
@@ -193,7 +200,7 @@ G # (fst(P),snd(P)) ~> P :-
 G # lambda(bind(x(X),apply(F,x(X)))) ~> F :-
 	G # F:_->_.
 
-G # fold(unfold(O)) ~> O :-
+G # fold(T,unfold(T,O)) ~> O :-
 	G # O:mu(_).
 
 
