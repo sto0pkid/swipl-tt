@@ -1,8 +1,12 @@
 :- op(999, xfx, user:'#').
 :- op(998, xfx, user:'->').
 :- op(998, xfx, user:'~>').
+:- op(998, xfx, user:'~>>').
+:- op(998, xfx, user:'@=').
 
 % CAPTURE-AVOIDING SUBSTITUTION
+% substitute(Term, Var, For, New_Term)
+
 substitute(x(X), x(Y), For,  For) :- X == Y, !.
 substitute(x(X), x(Y),   _, x(X)) :- X \== Y, !.
 
@@ -13,10 +17,11 @@ substitute([Term | Rest], X, For, [Term_Sub | Rest_Sub]) :-
 	substitute(Term, X, For, Term_Sub),
 	substitute(Rest, X, For, Rest_Sub).
 	
-substitute(bind(X,Expr), Y, For, bind(Fresh,Expr_Sub)) :-
+substitute(bind(x(X),Expr), x(Y), For, bind(x(Fresh),Expr_Sub)) :-
 	!,
-	substitute(Expr, X, Fresh, Expr_Fresh),
-	substitute(Expr_Fresh, Y, For, Expr_Sub).
+	gensym(x,Fresh),
+	substitute(Expr, x(X), x(Fresh), Expr_Fresh),
+	substitute(Expr_Fresh, x(Y), For, Expr_Sub).
 
 substitute(Term, X, For, Term_Sub) :-
 	Term =.. [F | Args],
@@ -29,6 +34,23 @@ cong([Arg_1 | Args], [Arg_2 | Args], G) :-
 cong([Arg | Args_1], [Arg | Args_2], G) :-
 	\+(G # Arg ~> _),
 	cong(Args_1, Args_2, G).
+
+
+% ALPHA EQUALITY
+% terms are alpha-equal if they're identical up to variable renaming
+% note: in De Bruijn index notation, alpha-equal terms are syntactically identical
+x(X) @= x(X) :- !.
+bind(x(X),A) @= bind(x(Y),B) :-
+	!,
+	substitute(B, x(Y), x(X), B_Sub),
+	A @= B_Sub.
+
+T1 @= T2 :-
+	T1 =.. [F1 | Args1],
+	T2 =.. [F2 | Args2],
+	F1 = F2,
+	maplist(@=, Args1, Args2).
+
 
 
 
@@ -85,7 +107,7 @@ G # T1 = T2 :-
 
 
 % FORMATION RULES
-_ # type(1).
+_ # type(0).
 _ # type(1).
 G # type(S + T) :- G # type(S), G # type(T).
 G # type(S * T) :- G # type(S), G # type(T).
@@ -122,8 +144,8 @@ G # intro(E):mu(bind(x(X),T)) :-
 
 
 % ELIMINATION RULES
-G # abort(F):C :-
-	G # F:0.
+G # abort(E):_ :-
+	G # E:0.
 
 G # case(P, bind(x(X),L), bind(x(Y),R)):C :-
 	G # P:S+T,
