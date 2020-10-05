@@ -155,9 +155,9 @@ _ # snd((_,Y)) ~> Y.
 _ # apply(lambda(bind(x(X),E)), X) ~> E_Sub :-
 	substitute(E,x(X),X,E_Sub).
 
-_ # rec(intro(X),bind(x(V),bind(x(R),E))) :-
+_ # rec(intro(X),bind(x(V),bind(x(R),E))) ~> E_Sub :-
 	substitute(E,x(V),X,E_Sub1),
-	substitute(E_Sub1, x(R), rec(?, bind(x(V),bind(x(R),E)))).
+	substitute(E_Sub1, x(R), rec(?, bind(x(V),bind(x(R),E))), E_Sub).
 
 
 
