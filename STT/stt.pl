@@ -32,7 +32,7 @@ substitute(Term, X, For, Term_Sub) :-
 
 % ALPHA EQUALITY
 % terms are alpha-equal if they're identical up to variable renaming
-% in De Bruijn index notation, alpha-equal terms are syntactically identical
+% note: in De Bruijn index notation, alpha-equal terms are syntactically identical
 x(X) @= x(X) :- !.
 bind(x(X),A) @= bind(x(Y),B) :-
 	!,
@@ -278,7 +278,7 @@ G # suc(N):nat :-
 	G # N:nat.
 
 % elimination
-G # nat_rec(N,Z,bind(x(V),bind(x(R),S))):C :-
+G # nat_rec(N, Z, bind(x(V),bind(x(R),S))):C :-
 	G # N:nat,
 	G # type(C),
 	G # Z:C,
@@ -312,22 +312,25 @@ G # [X | Xs]:list(A) :-
 	G # Xs:list(A).
 
 % elimination
-G # list_rec(L, Last, bind(x(V),bind(x(W),bind(x(R),F)))):C :-
+% note: the object type `A` is added as an argument to list_rec because 
+% `G # L:list(A)` would loop on a proof-search for variable `A` in `G # type(A)`
+%
+G # elim(list(A), L, Last, bind(x(V),bind(x(W),bind(x(R),F)))):C :-
 	G # type(C),
-	G # L:list(_),
+	G # L:list(A),
 	G # Last:C,
 	[x(V):A, x(W):list(A), x(R):C|G] # F:C.
 
 
 % beta
-_ # list_rec([], Nil, _) ~> Nil.
-_ # list_rec([X|Xs], Nil, bind(x(V),bind(x(W),bind(x(R),Cons)))) ~> Cons_Sub :-
+_ # elim(_, [], Nil, _) ~> Nil.
+_ # elim(list(A), [X | Xs], Nil, bind(x(V),bind(x(W),bind(x(R),Cons)))) ~> Cons_Sub :-
 	substitute(Cons, x(V), X, Cons_Sub1),
 	substitute(Cons_Sub1, x(W), Xs, Cons_Sub2),
-	substitute(Cons_Sub2, x(R), list_rec(Xs, Nil, bind(x(V),bind(x(W),bind(x(R),Cons)))), Cons_Sub).
+	substitute(Cons_Sub2, x(R), elim(list(A), Xs, Nil, bind(x(V),bind(x(W),bind(x(R),Cons)))), Cons_Sub).
 % eta
-G # list_rec(L, [], bind(x(V),bind(x(W),bind(_,[x(V)|x(W)])))) ~> L :-
-	G # L:list(_).
+G # elim(list(A), L, [], bind(x(V),bind(x(W),bind(_,[x(V)|x(W)])))) ~> L :-
+	G # L:list(A).
 
 
 /*
