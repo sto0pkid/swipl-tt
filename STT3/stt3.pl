@@ -135,9 +135,9 @@ G # snd(P):T :- G # P:_*T.
 
 G # apply(F,X):T :- G # X:S, G # F:S->T.
 
-G # rec(O,bind(x(V),bind(x(R),E)):C :-
+G # unfold(O):E :-
 	G # O:mu(bind(x(X),T)),
-	[x(V):mu(bind(x(X),T)),x(R):C|G] # E:C.
+	substitute(T,x(X),mu(bind(x(X),T)),E).
 
 
 
@@ -155,10 +155,7 @@ _ # snd((_,Y)) ~> Y.
 _ # apply(lambda(bind(x(X),E)), X) ~> E_Sub :-
 	substitute(E,x(X),X,E_Sub).
 
-_ # rec(intro(X),bind(x(V),bind(x(R),E))) ~> E_Sub :-
-	substitute(E,x(V),X,E_Sub1),
-	substitute(E_Sub1, x(R), rec(?, bind(x(V),bind(x(R),E))), E_Sub).
-
+_ # unfold(fold(O)) ~> O.
 
 
 % ETA RULES
@@ -174,9 +171,8 @@ G # (fst(P),snd(P)) ~> P :-
 G # lambda(bind(x(X),apply(F,x(X)))) ~> F :-
 	G # F:_->_.
 
-G # intro(rec(O,bind(x(X),bind(x(R),intro(x(X)))))) ~> O :-
+G # fold(unfold(O)) ~> O :-
 	G # O:mu(_).
-
 
 
 /*
@@ -214,6 +210,5 @@ BinTree A 	= mu(bind(x(X),1+A*A*x(X)))
 		= 1 + A*A*(BinTree A)
 		= 1 + A*A + A*A*A*A*(BinTree A)
 		= 1 + A*A + A*A*A*A + ...
-
 
 */
