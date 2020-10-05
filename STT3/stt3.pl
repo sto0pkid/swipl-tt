@@ -7,9 +7,11 @@
 % CAPTURE-AVOIDING SUBSTITUTION
 % substitute(Var, Replacement, Term, New_Term)
 % substitute Var for Replacement in Term to get New_Term
+% maybe runs bidirectionally; the rules for mu assume that it does.
 
 substitute(x(X), For, x(X), For).
-substitute(x(Y), _, x(X), x(X)) :- X \== Y, !.
+substitute(x(X), _, _, x(X)) :- !, false.
+substitute(x(Y), _, x(X), x(X)) :- X \= Y, !.
 
 substitute(_, _, Atom, Atom) :-
 	atom(Atom),
@@ -28,12 +30,22 @@ substitute(x(Y), For, bind(x(X),Expr), bind(x(Fresh),Expr_Sub)) :-
 	substitute(Expr_Fresh, x(Y), For, Expr_Sub).
 
 substitute(x(X), For, Term, New_Term) :-
+	nonvar(Term),
 	Term =.. Subterms,
 	maplist(
 		substitute(x(X),For),
 		Subterms, New_Subterms
 	),
 	New_Term =.. New_Subterms.
+
+substitute(x(X), For, Term, New_Term) :-
+	nonvar(New_Term),
+	New_Term =.. New_Subterms,
+	maplist(
+		substitute(x(X),For),
+		Subterms, New_Subterms
+	),
+	Term =.. Subterms.
 
 
 cong([Arg_1 | Args], [Arg_2 | Args], G) :-
@@ -143,7 +155,7 @@ G # lambda(bind(x(X),E)):S->T :-
 	G # type(S->T),
 	[x(X):S|G] # E:T.
 
-G # fold(T,E):mu(bind(x(X),T)) :- 
+G # fold(E):mu(bind(x(X),T)) :- 
 	substitute(x(X),mu(bind(x(X),T)),T,T_Sub),
 	G # E:T_Sub.
 
@@ -164,9 +176,9 @@ G # snd(P):T :- G # P:_*T.
 
 G # apply(F,X):T :- G # X:S, G # F:S->T.
 
-G # unfold(T,O):E :-
-	G # O:mu(bind(x(X),T)),
-	substitute(x(X), mu(bind(x(X),T)), T, E).
+G # unfold(O):E :-
+	substitute(x(X), mu(bind(x(X),T)), T, E),
+	G # O:mu(bind(x(X),T)).
 
 
 
@@ -184,7 +196,7 @@ _ # snd((_,Y)) ~> Y.
 _ # apply(lambda(bind(x(V),E)), X) ~> E_Sub :-
 	substitute(x(V), X, E, E_Sub).
 
-_ # unfold(T,fold(T,O)) ~> O.
+_ # unfold(fold(O)) ~> O.
 
 
 % ETA RULES
@@ -200,7 +212,7 @@ G # (fst(P),snd(P)) ~> P :-
 G # lambda(bind(x(X),apply(F,x(X)))) ~> F :-
 	G # F:_->_.
 
-G # fold(T,unfold(T,O)) ~> O :-
+G # fold(unfold(O)) ~> O :-
 	G # O:mu(_).
 
 
