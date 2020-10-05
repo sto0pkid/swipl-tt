@@ -10,23 +10,23 @@
 substitute(x(X), x(Y), For,  For) :- X == Y, !.
 substitute(x(X), x(Y),   _, x(X)) :- X \== Y, !.
 
+substitute(Atom, _, _, Atom) :-
+	atom(Atom),
+	!.
 
-substitute([], _, _, []) :- !.
-substitute([Term | Rest], X, For, [Term_Sub | Rest_Sub]) :-
-	!,
-	substitute(Term, X, For, Term_Sub),
-	substitute(Rest, X, For, Rest_Sub).
-	
 substitute(bind(x(X),Expr), x(Y), For, bind(x(Fresh),Expr_Sub)) :-
 	!,
 	gensym(x,Fresh),
 	substitute(Expr, x(X), x(Fresh), Expr_Fresh),
 	substitute(Expr_Fresh, x(Y), For, Expr_Sub).
 
-substitute(Term, X, For, Term_Sub) :-
-	Term =.. [F | Args],
-	substitute(Args, X, For, Args_Sub),
-	Term_Sub =.. [F | Args_Sub].
+substitute(Term, x(X), For, New_Term) :-
+	Term =.. Subterms,
+	maplist(
+		{X}/[Subterm, New_Subterm]>>(substitute(Subterm,x(X),For,New_Subterm)),
+		Subterms, New_Subterms
+	),
+	New_Term =.. New_Subterms.
 
 
 cong([Arg_1 | Args], [Arg_2 | Args], G) :-
