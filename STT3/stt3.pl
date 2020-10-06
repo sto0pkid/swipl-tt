@@ -1,25 +1,69 @@
+% _#_ : Context -> Judgement -> Prop
 :- op(999, xfx, user:'#').
-:- op(998, xfx, user:'->').
+
+% _->_ : Type -> Type -> Judgement
+:- op(997, xfx, user:'->').
+
+% _~>_ : Term -> Term -> Judgement
 :- op(998, xfx, user:'~>').
+
+% _~>>_ : Term -> Term -> Judgement
 :- op(998, xfx, user:'~>>').
+
+% _=_ : Term -> Term -> Judgement
+
+% _type : Term -> Judgement
+:- op(998, xf, user:'type').
+
+% _:_ : Term -> Term -> Judgement
+
+% x(_) : Label -> Variable
+
+% \ (_,_) : Variable * Term -> not quite a term
+
+% _@=_ : Term -> Term -> Prop
 :- op(998, xfx, user:'@=').
 
+% left : Term -> Term
+:- op(399, fx, user:'left').
+
+:- op(399, fx, user:'right').
+
+:- op(399, fx, user:'fold').
+
+:- op(399, fx, user:'unfold').
+
+:- op(399, fx, user:'abort').
+
+:- op(399, fx, user:'fst').
+
+:- op(399, fx, user:'snd').
+
+:- op(399, fx, user:'mu').
+
+:- op(399, fx, user:'\\').
+
+:- op(398, xfx, user:'>>').
+
+
+
 % CAPTURE-AVOIDING SUBSTITUTION
-% substitute(Var, Replacement, Term, New_Term)
+% substitute
 % substitute Var for Replacement in Term to get New_Term
-% trying to make it run bidirectionally
+% trying to make it run bidirectionally; 
+%  * elimination rule for mu types assumes that it does
 
 substitute(x(X), For, x(X), For).
 substitute(x(Y), _, x(X), x(X)) :- X \= Y, !.
 
-substitute(x(Y), For, bind(x(X),Expr), bind(x(Fresh),Expr_Sub)) :-
+substitute(x(Y), For, [x(X)]>>Expr, [x(Fresh)]>>Expr_Sub) :-
 	nonvar(X), nonvar(Expr),
 	!,
 	gensym(x,Fresh),
 	substitute(x(X), x(Fresh), Expr, Expr_Fresh),
 	substitute(x(Y), For, Expr_Fresh, Expr_Sub).
 
-substitute(x(Y), For, bind(x(X),Expr), bind(x(Fresh),Expr_Sub)) :-
+substitute(x(Y), For, [x(X)]>>Expr, [x(Fresh)]>>Expr_Sub) :-
 	var(X), var(Expr), nonvar(Fresh),nonvar(Expr_Sub),
 	!,
 	gensym(x,X),
@@ -57,10 +101,12 @@ cong([Arg | Args_1], [Arg | Args_2], G) :-
 
 
 % ALPHA EQUALITY
+% TERM @= TERM
+%
 % terms are alpha-equal if they're identical up to variable renaming
 % note: in De Bruijn index notation, alpha-equal terms are syntactically identical
 x(X) @= x(X) :- !.
-bind(x(X),A) @= bind(x(Y),B) :-
+[x(X)]>>A @= [x(Y)]>>B :-
 	!,
 	substitute(x(Y), x(X), B, B_Sub),
 	A @= B_Sub.
@@ -83,7 +129,7 @@ _ # x(_) ~> _ :-
 	!,
 	false.
 
-G # bind(x(X),T1) ~> bind(x(X),T2) :-
+G # [x(X)]>>T1 ~> [x(X)]>>T2 :-
 	!,
 	G # T1 ~> T2.
 
@@ -127,93 +173,104 @@ G # T1 = T2 :-
 
 
 % FORMATION RULES
-_ # type(0).
-_ # type(1).
-G # type(S + T) :- G # type(S), G # type(T).
-G # type(S * T) :- G # type(S), G # type(T).
-G # type(S -> T) :- G # type(S), G # type(T).
-G # type(mu(bind(x(X),T))) :- [type(x(X))|G] # type(T).
+_ # 0 type.
+
+_ # 1 type.
+
+G # S + T type :- 
+	G # S type,
+	G # T type.
+
+G # S * T type :- 
+	G # S type,
+	G # T type.
+
+G # S -> T type :-
+	G # S type,
+	G # T type.
+
+G # mu[x(X)]>>T type :- 
+	[x(X) type | G] # T type.
 
 
 
 % INTRODUCTION RULES
-_ # null:1.
+_ # null : 1.
 
-G # left(X):S+T :-
-	G # type(S+T),
+G # left X : S + T :-
+	G # S + T type,
 	G # X:S.
 
-G # right(X):S+T :-
-	G # type(S+T),
+G # right X : S + T :-
+	G # S + T type,
 	G # X:T.
 
-G # (X,Y):S*T :-
-	G # type(S*T),
+G # (X,Y) : S * T :-
+	G # S * T type,
 	G # X:S,
 	G # Y:T.
 
-G # lambda(bind(x(X),E)):S->T :-
-	G # type(S->T),
+G # \[x(X)]>>E : S -> T :-
+	G # S -> T type,
 	[x(X):S|G] # E:T.
 
-G # fold(E):mu(bind(x(X),T)) :- 
-	substitute(x(X),mu(bind(x(X),T)),T,T_Sub),
+G # fold E : mu[x(X)]>>T :-
+	G # mu[x(X)]>>T type,
+	substitute(x(X), mu[x(X)]>>T, T, T_Sub),
 	G # E:T_Sub.
 
 
-
-
 % ELIMINATION RULES
-G # abort(E):_ :-
+G # abort E :_ :-
 	G # E:0.
 
-G # case(P, bind(x(X),L), bind(x(Y),R)):C :-
-	G # P:S+T,
-	[x(X):S|G] # L:C,
-	[x(Y):T|G] # R:C.
+G # case(P, [x(X)]>>L, [x(Y)]>>R):C :-
+	G # P:S + T,
+	[ x(X):S | G] # L:C,
+	[ x(Y):T | G] # R:C.
 
-G # fst(P):S :- G # P:S*_.
-G # snd(P):T :- G # P:_*T.
+G # fst P : S :- G # P: S * _.
+G # snd P : T :- G # P: _ * T.
 
-G # apply(F,X):T :- G # X:S, G # F:S->T.
+G # apply(F,X):T :- G # X:S, G # F:S -> T.
 
-G # unfold(O):E :-
-	substitute(x(X), mu(bind(x(X),T)), T, E),
-	G # O:mu(bind(x(X),T)).
+G # unfold O : E :-
+	substitute(x(X), mu [x(X)]>>T, T, E),
+	G # O : mu [x(X)]>>T.
 
 
 
 % BETA RULES
-_ # case(left(A), bind(x(X),L), _) ~> L_Sub :-
+_ # case(left A, [x(X)]>>L, _) ~> L_Sub :-
 	substitute(x(X), A, L, L_Sub).
 
-_ # case(right(B), _, bind(x(Y),R)) ~> R_Sub :-
+_ # case(right B, _, [x(Y)]>>R) ~> R_Sub :-
 	substitute(x(Y), B, R, R_Sub).
 
-_ # fst((X,_)) ~> X.
+_ # fst (X,_) ~> X.
 
-_ # snd((_,Y)) ~> Y.
+_ # snd (_,Y) ~> Y.
 
-_ # apply(lambda(bind(x(V),E)), X) ~> E_Sub :-
+_ # apply(\[x(V)]>>E, X) ~> E_Sub :-
 	substitute(x(V), X, E, E_Sub).
 
-_ # unfold(fold(O)) ~> O.
+_ # unfold (fold O) ~> O.
 
 
 % ETA RULES
-G # abort(F) ~> F :-
-	G # F:0.
+G # abort E ~> E :-
+	G # E:0.
 
-G # case(P, bind(x(X),left(x(X))), bind(x(Y),right(x(Y)))) ~> P :-
-	G # P:_+_.
+G # case(P, [x(X)]>>(left x(X)), [x(Y)]>>(right x(Y))) ~> P :-
+	G # P: _ + _.
 
-G # (fst(P),snd(P)) ~> P :-
-	G # P:_*_.
+G # (fst P, snd P) ~> P :-
+	G # P: _ * _.
 
-G # lambda(bind(x(X),apply(F,x(X)))) ~> F :-
-	G # F:_->_.
+G # \[x(X)]>>apply(F, x(X)) ~> F :-
+	G # F: _ -> _.
 
-G # fold(unfold(O)) ~> O :-
+G # fold (unfold O) ~> O :-
 	G # O:mu(_).
 
 
