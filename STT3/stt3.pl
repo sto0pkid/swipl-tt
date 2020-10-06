@@ -7,45 +7,46 @@
 % CAPTURE-AVOIDING SUBSTITUTION
 % substitute(Var, Replacement, Term, New_Term)
 % substitute Var for Replacement in Term to get New_Term
-% maybe runs bidirectionally; the rules for mu assume that it does.
+% trying to make it run bidirectionally
 
 substitute(x(X), For, x(X), For).
-substitute(x(X), _, _, x(X)) :- !, false.
 substitute(x(Y), _, x(X), x(X)) :- X \= Y, !.
 
-substitute(_, _, Atom, Atom) :-
-	atom(Atom),
-	!.
-
-substitute(_, _, 0, 0) :-
-	!.
-
-substitute(_, _, 1, 1) :-
-	!.
-
 substitute(x(Y), For, bind(x(X),Expr), bind(x(Fresh),Expr_Sub)) :-
+	nonvar(X), nonvar(Expr),
 	!,
 	gensym(x,Fresh),
-	substitute(Expr, x(X), x(Fresh), Expr_Fresh),
-	substitute(Expr_Fresh, x(Y), For, Expr_Sub).
+	substitute(x(X), x(Fresh), Expr, Expr_Fresh),
+	substitute(x(Y), For, Expr_Fresh, Expr_Sub).
+
+substitute(x(Y), For, bind(x(X),Expr), bind(x(Fresh),Expr_Sub)) :-
+	var(X), var(Expr), nonvar(Fresh),nonvar(Expr_Sub),
+	!,
+	gensym(x,X),
+	substitute(x(Fresh), x(X), Expr_Sub, Expr_Fresh),
+	substitute(x(Y), For, Expr, Expr_Fresh).
+
+
 
 substitute(x(X), For, Term, New_Term) :-
-	nonvar(Term),
-	Term =.. Subterms,
+	nonvar(For), nonvar(Term), Term \= x(_),
+	!,
+	Term =.. [F | Subterms],
 	maplist(
 		substitute(x(X),For),
 		Subterms, New_Subterms
 	),
-	New_Term =.. New_Subterms.
+	New_Term =.. [F | New_Subterms].
 
 substitute(x(X), For, Term, New_Term) :-
-	nonvar(New_Term),
-	New_Term =.. New_Subterms,
+	nonvar(For), nonvar(New_Term), New_Term \= x(_),
+	New_Term =.. [F | New_Subterms],
 	maplist(
 		substitute(x(X),For),
 		Subterms, New_Subterms
 	),
-	Term =.. Subterms.
+	Term =.. [F | Subterms].
+
 
 
 cong([Arg_1 | Args], [Arg_2 | Args], G) :-
